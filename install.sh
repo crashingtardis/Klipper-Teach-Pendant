@@ -39,7 +39,7 @@ if [ -f "$MOONRAKER_CONF" ]; then
     echo "origin: https://github.com/crashingtardis/Klipper-Teach-Pendant.git" >> "$MOONRAKER_CONF"
     echo "primary_branch: main" >> "$MOONRAKER_CONF"
     echo "is_system_service: False" >> "$MOONRAKER_CONF"
-    echo "managed_services: klipper" >> "$MOONRAKER_CONF"
+    echo "managed_services: klipper moonraker" >> "$MOONRAKER_CONF"
     echo "install_script: install.sh" >> "$MOONRAKER_CONF"
     echo "web_path: ${WEB_DIR}" >> "$MOONRAKER_CONF"
     echo "✔ Added/Updated [update_manager klipper-teach-pendant] in moonraker.conf"
