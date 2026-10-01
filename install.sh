@@ -25,14 +25,14 @@ PRINTER_DATA="${USER_DIR}/printer_data"
 
 if [ -d "${PRINTER_DATA}/config" ]; then
     CONFIG_DIR="${PRINTER_DATA}/config"
-    WEB_DIR="${PRINTER_DATA}/klipper-teach-pendant"
 elif [ -d "${USER_DIR}/klipper_config" ]; then
     CONFIG_DIR="${USER_DIR}/klipper_config"
-    WEB_DIR="${USER_DIR}/klipper_config/klipper-teach-pendant"
 else
     report_error "Could not detect a standard Klipper environment."
 fi
 
+# *** THE FIX: Deploy web files INSIDE config so Moonraker can serve them ***
+WEB_DIR="${CONFIG_DIR}/klipper-teach-pendant"
 MOONRAKER_CONF="${CONFIG_DIR}/moonraker.conf"
 PRINTER_CONF="${CONFIG_DIR}/printer.cfg"
 PEARL_CFG="${CONFIG_DIR}/teach_pendant.cfg"
@@ -117,11 +117,12 @@ fi
 report_status "Configuring Mainsail Sidebar UI tab..."
 mkdir -p "${THEME_DIR}"
 
-cat << 'EOF' > "${THEM_DIR:-${THEME_DIR}}/navi.json"
+# *** THE FIX: Point href to the Moonraker config file route ***
+cat << 'EOF' > "${THEME_DIR}/navi.json"
 [
   {
     "title": "Teach Pendant",
-    "href": "/server/files/klipper-teach-pendant/index.html",
+    "href": "/server/files/config/klipper-teach-pendant/index.html",
     "target": "_self",
     "position": 35,
     "icon": "M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M11,7V11H7V13H11V17H13V13H17V11H13V7H11Z"
@@ -132,7 +133,7 @@ report_ok "Custom navigation tab registered in ${THEME_DIR}/navi.json."
 
 echo -e "${SR_GREEN}${SR_BOLD}"
 echo "=================================================="
-echo "   Installation / Update Complete!"
-echo "   Please restart Moonraker to apply changes."
+echo "   Installation Complete!"
+echo "   Please hard-refresh Mainsail (Ctrl+F5)."
 echo "=================================================="
 echo -e "${SR_RESET}"
