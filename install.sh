@@ -26,9 +26,9 @@ if [ -f "$MOONRAKER_CONF" ]; then
     if ! grep -q "\[update_manager klipper-teach-pendant\]" "$MOONRAKER_CONF"; then
         echo "" >> "$MOONRAKER_CONF"
         echo "[update_manager klipper-teach-pendant]" >> "$MOONRAKER_CONF"
-        echo "type: git_repo" >> "$MOONRAKER_CONF"
+        echo "type: web" >> "$MOONRAKER_CONF"
+        echo "repo: crashingtardis/Klipper-Teach-Pendant" >> "$MOONRAKER_CONF"
         echo "path: ${HOME}/Klipper-Teach-Pendant" >> "$MOONRAKER_CONF"
-        echo "origin: https://github.com/crashingtardis/Klipper-Teach-Pendant.git" >> "$MOONRAKER_CONF"
         echo "primary_branch: main" >> "$MOONRAKER_CONF"
         echo "is_system_service: False" >> "$MOONRAKER_CONF"
         echo "managed_services: klipper" >> "$MOONRAKER_CONF"
@@ -53,11 +53,9 @@ fi
 if [ -f "$PRINTER_CONF" ]; then
     if ! grep -q "\[include teach_pendant.cfg\]" "$PRINTER_CONF"; then
         if grep -q "<---------------------- SAVE_CONFIG ---------------------->" "$PRINTER_CONF"; then
-            # Insert right before the SAVE_CONFIG comment block using sed
             sed -i '/#\*# <---------------------- SAVE_CONFIG ---------------------->/i [include teach_pendant.cfg]\n' "$PRINTER_CONF"
             echo "✔ Added [include teach_pendant.cfg] to printer.cfg before SAVE_CONFIG block"
         else
-            # Fallback to appending at the end if SAVE_CONFIG block isn't found
             echo "" >> "$PRINTER_CONF"
             echo "[include teach_pendant.cfg]" >> "$PRINTER_CONF"
             echo "✔ Added [include teach_pendant.cfg] to the end of printer.cfg"
