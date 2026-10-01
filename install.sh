@@ -1,81 +1,138 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -e
 
-# --- Configuration Paths ---
-CONFIG_DIR="${HOME}/printer_data/config"
+# ==============================================================================
+# Klipper Teach Pendant Installer
+# Styled and structured for modern Klipper/Moonraker ecosystems
+# ==============================================================================
+
+# --- Color formatting ---
+SR_RESET="$(tput sgr0)"
+SR_RED="$(tput setaf 1)"
+SR_GREEN="$(tput setaf 2)"
+SR_YELLOW="$(tput setaf 3)"
+SR_BLUE="$(tput setaf 4)"
+SR_CYAN="$(tput setaf 6)"
+SR_BOLD="$(tput bold)"
+
+# --- Helper functions ---
+report_status() { echo -e "${SR_CYAN}${SR_BOLD}[INFO] ${SR_RESET}${SR_BOLD}$1${SR_RESET}"; }
+report_ok() { echo -e "${SR_GREEN}${SR_BOLD}[OK] ${SR_RESET}$1"; }
+report_warning() { echo -e "${SR_YELLOW}${SR_BOLD}[WARN] ${SR_RESET}$1"; }
+report_error() { echo -e "${SR_RED}${SR_BOLD}[ERROR] ${SR_RESET}$1"; exit 1; }
+
+# --- Global Variables ---
+USER_DIR="/home/${USER}"
+REPO_DIR="${USER_DIR}/Klipper-Teach-Pendant"
+PRINTER_DATA="${USER_DIR}/printer_data"
+
+# Auto-detect Klipper config directory structure
+if [ -d "${PRINTER_DATA}/config" ]; then
+    CONFIG_DIR="${PRINTER_DATA}/config"
+    WEB_DIR="${PRINTER_DATA}/klipper-teach-pendant"
+elif [ -d "${USER_DIR}/klipper_config" ]; then
+    CONFIG_DIR="${USER_DIR}/klipper_config"
+    WEB_DIR="${USER_DIR}/klipper_config/klipper-teach-pendant"
+else
+    report_error "Could not detect a standard Klipper environment (printer_data or klipper_config)."
+fi
+
 MOONRAKER_CONF="${CONFIG_DIR}/moonraker.conf"
 PRINTER_CONF="${CONFIG_DIR}/printer.cfg"
 PEARL_CFG="${CONFIG_DIR}/teach_pendant.cfg"
-WEB_DIR="${HOME}/printer_data/klipper-teach-pendant"
-REPO_DIR="${HOME}/Klipper-Teach-Pendant"
+THEME_DIR="${CONFIG_DIR}/.theme"
 
+# ==============================================================================
+# Step 1: Initialize Installation
+# ==============================================================================
+echo -e "${SR_BLUE}${SR_BOLD}"
 echo "=================================================="
-echo "Installing / Updating Klipper Teach Pendant..."
+echo "    Installing Klipper Teach Pendant"
 echo "=================================================="
+echo -e "${SR_RESET}"
 
-# 1. Create web directory and force-overwrite copy front-end files
+report_status "Detected configuration path: ${CONFIG_DIR}"
+report_status "Detected target web path: ${WEB_DIR}"
+
+# ==============================================================================
+# Step 2: Deploy Frontend Web Assets
+# ==============================================================================
+report_status "Deploying front-end web files..."
 mkdir -p "${WEB_DIR}"
+
 if [ -f "index.html" ]; then
     cp -f index.html styles.css app.js klipper-logo.png "${WEB_DIR}/"
-    echo "✔ Front-end files forcefully updated in ${WEB_DIR}"
+    report_ok "Front-end files forcefully updated in ${WEB_DIR}"
 elif [ -f "${REPO_DIR}/index.html" ]; then
     cp -f "${REPO_DIR}/index.html" "${REPO_DIR}/styles.css" "${REPO_DIR}/app.js" "${REPO_DIR}/klipper-logo.png" "${WEB_DIR}/"
-    echo "✔ Front-end files forcefully updated from repo directory"
+    report_ok "Front-end files forcefully updated from repo directory."
 else
-    echo "✖ Error: Front-end files not found."
-    exit 1
+    report_error "Front-end source files not found. Are you running this script from the repository?"
 fi
 
-# 2. Automatically add or update Update Manager entry in moonraker.conf with web_path
+# ==============================================================================
+# Step 3: Configure Moonraker Update Manager
+# ==============================================================================
+report_status "Configuring Moonraker Update Manager..."
 if [ -f "$MOONRAKER_CONF" ]; then
     if grep -q "\[update_manager klipper-teach-pendant\]" "$MOONRAKER_CONF"; then
         sed -i '/\[update_manager klipper-teach-pendant\]/,/^$/d' "$MOONRAKER_CONF"
-        echo "ℹ Removed outdated update manager block from moonraker.conf"
+        report_ok "Removed legacy update manager block from moonraker.conf."
     fi
 
-    echo "" >> "$MOONRAKER_CONF"
-    echo "[update_manager klipper-teach-pendant]" >> "$MOONRAKER_CONF"
-    echo "type: git_repo" >> "$MOONRAKER_CONF"
-    echo "path: ${REPO_DIR}" >> "$MOONRAKER_CONF"
-    echo "origin: https://github.com/crashingtardis/Klipper-Teach-Pendant.git" >> "$MOONRAKER_CONF"
-    echo "primary_branch: main" >> "$MOONRAKER_CONF"
-    echo "is_system_service: False" >> "$MOONRAKER_CONF"
-    echo "managed_services: klipper moonraker" >> "$MOONRAKER_CONF"
-    echo "install_script: install.sh" >> "$MOONRAKER_CONF"
-    echo "web_path: ${WEB_DIR}" >> "$MOONRAKER_CONF"
-    echo "✔ Added/Updated [update_manager klipper-teach-pendant] in moonraker.conf"
+    # Append the clean Git Repo Moonraker block
+    cat << EOF >> "$MOONRAKER_CONF"
+
+[update_manager klipper-teach-pendant]
+type: git_repo
+path: ${REPO_DIR}
+origin: https://github.com/crashingtardis/Klipper-Teach-Pendant.git
+primary_branch: main
+is_system_service: False
+managed_services: klipper
+install_script: install.sh
+EOF
+    report_ok "Added [update_manager klipper-teach-pendant] to moonraker.conf."
 else
-    echo "⚠ Warning: moonraker.conf not found at ${MOONRAKER_CONF}."
+    report_warning "moonraker.conf not found at ${MOONRAKER_CONF}. Skipping auto-update configuration."
 fi
 
-# 3. Create teach_pendant.cfg if it does not exist
+# ==============================================================================
+# Step 4: Prepare Klipper Config (teach_pendant.cfg)
+# ==============================================================================
+report_status "Setting up Klipper configuration file..."
 if [ ! -f "$PEARL_CFG" ]; then
-    touch "$PEARL_CFG"
     echo "# Teach Pendant Saved Points" > "$PEARL_CFG"
-    echo "✔ Created empty teach_pendant.cfg"
+    report_ok "Created empty teach_pendant.cfg for point storage."
 else
-    echo "ℹ teach_pendant.cfg already exists (preserving saved points)."
+    report_ok "teach_pendant.cfg already exists (preserving user data)."
 fi
 
-# 4. Add [include teach_pendant.cfg] to printer.cfg before SAVE_CONFIG block if missing
+# ==============================================================================
+# Step 5: Inject [include] into printer.cfg
+# ==============================================================================
+report_status "Injecting configuration include into printer.cfg..."
 if [ -f "$PRINTER_CONF" ]; then
     if ! grep -q "\[include teach_pendant.cfg\]" "$PRINTER_CONF"; then
         if grep -q "<---------------------- SAVE_CONFIG ---------------------->" "$PRINTER_CONF"; then
             sed -i '/#\*# <---------------------- SAVE_CONFIG ---------------------->/i [include teach_pendant.cfg]\n' "$PRINTER_CONF"
-            echo "✔ Added [include teach_pendant.cfg] to printer.cfg before SAVE_CONFIG block"
+            report_ok "Added [include teach_pendant.cfg] before the SAVE_CONFIG block."
         else
             echo "" >> "$PRINTER_CONF"
             echo "[include teach_pendant.cfg]" >> "$PRINTER_CONF"
-            echo "✔ Added [include teach_pendant.cfg] to the end of printer.cfg"
+            report_ok "Added [include teach_pendant.cfg] to the bottom of printer.cfg."
         fi
     else
-        echo "ℹ [include teach_pendant.cfg] already present in printer.cfg"
+        report_ok "[include teach_pendant.cfg] is already present."
     fi
 else
-    echo "⚠ Warning: printer.cfg not found at ${PRINTER_CONF}."
+    report_warning "printer.cfg not found at ${PRINTER_CONF}."
 fi
 
-# 5. Register inside Mainsail Navigation using the correct dynamic path
-THEME_DIR="${CONFIG_DIR}/.theme"
+# ==============================================================================
+# Step 6: Mainsail Navigation Integration
+# ==============================================================================
+report_status "Configuring Mainsail Sidebar UI tab..."
 mkdir -p "${THEME_DIR}"
 
 cat << 'EOF' > "${THEME_DIR}/navi.json"
@@ -89,9 +146,14 @@ cat << 'EOF' > "${THEME_DIR}/navi.json"
   }
 ]
 EOF
-echo "✔ Custom navigation registered in Mainsail with correct path"
+report_ok "Custom navigation tab registered in ${THEME_DIR}/navi.json."
 
+# ==============================================================================
+# Finalization
+# ==============================================================================
+echo -e "${SR_GREEN}${SR_BOLD}"
 echo "=================================================="
-echo "Installation / Update Complete!"
-echo "Please restart Moonraker to apply changes."
+echo "   Installation / Update Complete!"
+echo "   Please restart Moonraker to apply changes."
 echo "=================================================="
+echo -e "${SR_RESET}"
