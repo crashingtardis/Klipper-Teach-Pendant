@@ -175,8 +175,8 @@
 
         .estop-container {
             position: relative;
-            width: 95px;
-            height: 95px;
+            width: 105px;
+            height: 105px;
             background-color: var(--estop-yellow);
             border-radius: 50%;
             display: flex;
@@ -193,6 +193,7 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
+            overflow: visible;
         }
 
         .estop-btn {
@@ -736,8 +737,8 @@
 
         .joystick-outer-wrap {
             position: relative;
-            width: 140px;
-            height: 140px;
+            width: 150px;
+            height: 150px;
             display: none;
             align-items: center;
             justify-content: center;
@@ -785,29 +786,31 @@
             color: var(--label-color);
             text-shadow: 0 1px 3px rgba(0,0,0,0.9);
             pointer-events: none;
+            width: 30px;
+            text-align: center;
         }
-
+        /* Perfectly centered using absolute layout and text-anchor styling */
         .jl-yp {
-            top: 0px;
-            left: 60px;
+            top: 2px;
+            left: 50%;
             transform: translateX(-50%);
         }
 
         .jl-ym {
-            bottom: 0px;
-            left: 60px;
+            bottom: 2px;
+            left: 50%;
             transform: translateX(-50%);
         }
 
         .jl-xp {
-            right: 0px;
-            top: 60px;
+            right: 2px;
+            top: 50%;
             transform: translateY(-50%);
         }
 
         .jl-xm {
-            left: 0px;
-            top: 60px;
+            left: 2px;
+            top: 50%;
             transform: translateY(-50%);
         }
     </style>
@@ -842,10 +845,10 @@
                     </div>
                     <div class="estop-container">
                         <svg class="estop-text-svg" viewBox="0 0 100 100">
-                            <path id="textPathTop" d="M 15 50 A 35 35 0 0 1 85 50" fill="transparent" />
-                            <text font-family="Arial" font-weight="900" font-size="11" fill="#111" letter-spacing="1"><textPath href="#textPathTop" startOffset="50%" text-anchor="middle">EMERGENCY</textPath></text>
-                            <path id="textPathBottom" d="M 12 55 A 38 38 0 0 0 88 55" fill="transparent" />
-                            <text font-family="Arial" font-weight="900" font-size="11" fill="#111" letter-spacing="2"><textPath href="#textPathBottom" startOffset="50%" text-anchor="middle">STOP</textPath></text>
+                            <path id="textPathTop" d="M 12 50 A 38 38 0 0 1 88 50" fill="transparent" />
+                            <text font-family="Arial" font-weight="900" font-size="10.5" fill="#111" letter-spacing="1"><textPath href="#textPathTop" startOffset="50%" text-anchor="middle">EMERGENCY</textPath></text>
+                            <path id="textPathBottom" d="M 15 58 A 35 35 0 0 0 85 58" fill="transparent" />
+                            <text font-family="Arial" font-weight="900" font-size="10.5" fill="#111" letter-spacing="2"><textPath href="#textPathBottom" startOffset="50%" text-anchor="middle">STOP</textPath></text>
                         </svg>
                         <button class="estop-btn" onclick="triggerEStop()">
                             <svg class="estop-arrows" viewBox="0 0 100 100"><path d="M 20 50 A 30 30 0 0 1 80 50 l -10 -5 m 10 5 l -5 10" stroke="white" stroke-width="4" fill="none" /></svg>
@@ -1417,7 +1420,7 @@
             }
         }
 
-        function handleJoystickEnd() {
+fn handleJoystickEnd() {
             isDragging = false;
             stick.style.transition = 'transform 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
             stick.style.transform = 'translate(0px, 0px)';
