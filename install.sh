@@ -5,7 +5,7 @@ CONFIG_DIR="${HOME}/printer_data/config"
 MOONRAKER_CONF="${CONFIG_DIR}/moonraker.conf"
 PRINTER_CONF="${CONFIG_DIR}/printer.cfg"
 PEARL_CFG="${CONFIG_DIR}/teach_pendant.cfg"
-WEB_DIR="${HOME}/printer_data/system/klipper-teach-pendant"
+WEB_DIR="${HOME}/printer_data/klipper-teach-pendant"
 REPO_DIR="${HOME}/Klipper-Teach-Pendant"
 
 echo "=================================================="
