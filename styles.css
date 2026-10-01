@@ -1,724 +1,882 @@
-﻿let jogSteps = [0.1, 0.5, 1, 5, 10, 25];
-let currentStep = 1;
-const feedrate = 3000;
-let motorsEnabled = false;
-let loadedMacrosData = {
-}
-
-;
-let currentStepIndex = 0;
-
-let invertAxes = false;
-let swapAxes = false;
-let joystickCmdsPerSec = 1.0;
-let isLightMode = false;
-
-let defaultMacroFile = "teach_pendant.cfg";
-let defaultNamePattern = "PT*";
-let wildcardChar = "*";
-let wildcardCounter = 1;
-
-document.addEventListener("DOMContentLoaded", () => {
-    initUI();
-    attachEventListeners();
-});
-
-function initUI() {
-    renderStepButtons();
-    loadMacrosList();
-    updateLocationField();
-    updateJoystickLabels();
-    setInterval(fetchPosition, 500);
-}
-
-function attachEventListeners() {
-    document .getElementById("consoleToggleBtn").addEventListener("click", toggleConsoleSide);
-    document .getElementById("motorToggleLabel").addEventListener("click", toggleMotors);
-    document .getElementById("estopBtn").addEventListener("click", triggerEStop);
-    document .getElementById("openSettingsBtn").addEventListener("click", openSettings);
-    document .getElementById("cancelSettingsBtn").addEventListener("click", closeSettings);
-    document .getElementById("applySettingsBtn").addEventListener("click", applySettings);
-    document .getElementById("saveLocationBtn").addEventListener("click", saveLocation);
-    document .getElementById("refreshMacrosBtn").addEventListener("click", loadMacrosList);
-    document .getElementById("runContinuousBtn").addEventListener("click", runContinuous);
-    document .getElementById("stepNextBtn").addEventListener("click", stepNext);
-    document .getElementById("stepPrevBtn").addEventListener("click", stepPrevious);
-    document .getElementById("touchUpBtn").addEventListener("click", touchUpLocation);
-    document .getElementById("macroSelect").addEventListener("change", updateStepSelection);
-    // Homing buttons document.querySelectorAll(".homing-bar .home-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-            triggerHome(btn.dataset.gcode, btn.dataset.label);
-        });
-    });
-    // Jog buttons document.querySelectorAll(".hw-jog-btn[data-axis]").forEach(btn => {
-        btn.addEventListener("click", () => {
-            jog(btn.dataset.axis, parseInt(btn.dataset.dir));
-        });
-    });
-    // Mode Toggle (Buttons vs Joystick) document.querySelectorAll("input[name='xyMode']").forEach(radio => {
-        radio.addEventListener("change", (e) => {
-            switchXYMode(e.target.value);
-        });
-    });
-    // Joystick event bindings const stick = document.getElementById("joystickStick");
-    if (stick)
-
-{
-    stick .addEventListener("mousedown", handleJoystickStart);
-    window .addEventListener("mousemove", handleJoystickMove);
-    window .addEventListener("mouseup", handleJoystickEnd);
-    stick .addEventListener("touchstart", handleJoystickStart, { passive: false });
-    window .addEventListener("touchmove", handleJoystickMove, { passive: false });
-    window .addEventListener("touchend", handleJoystickEnd);
-}
-
-}
-
-function updateLocationField() {
-    const locInput = document.getElementById("locationName");
-    if (locInput && !locInput.value)
-
-{
-    locInput .value = defaultNamePattern.replace(wildcardChar, wildcardCounter);
-}
-
-}
-
-function updateJoystickLabels() {
-    let topLabel = "+Y";
-    let bottomLabel = "-Y";
-    let rightLabel = "+X";
-    let leftLabel = "-X";
-    if (swapAxes)
-
-{
-    topLabel = invertAxes ? "-X" : "+X";
-    bottomLabel = invertAxes ? "+X" : "-X";
-    rightLabel = invertAxes ? "-Y" : "+Y";
-    leftLabel = invertAxes ? "+Y" : "-Y";
-}
-
-else if (invertAxes) {
-    topLabel = "-Y";
-    bottomLabel = "+Y";
-    rightLabel = "-X";
-    leftLabel = "+X";
-}
-
-document.getElementById("labelYP").innerText = topLabel;
-document.getElementById("labelYM").innerText = bottomLabel;
-document.getElementById("labelXP").innerText = rightLabel;
-document.getElementById("labelXM").innerText = leftLabel;
-}
-
-function toggleConsoleSide() {
-    const consoleCol = document.getElementById("consoleColumn");
-    consoleCol .style.order = consoleCol.style.order === "3" ? "1" : "3";
-}
-
-function logToConsole(text, lineId = null, isActiveTarget = false) {
-    const body = document.getElementById("consoleBody");
-    if (isActiveTarget)
-
-{
-    document .querySelectorAll(".console-line.active-target").forEach(el => el.classList.remove("active-target"));
-}
-
-const line = document.createElement("div");
-line.className = "console-line" + (isActiveTarget ? " active-target" : "");
-if (lineId) line.id = lineId;
-line.innerText = text;
-body.appendChild(line);
-body.scrollTop = body.scrollHeight;
-}
-
-function renderStepButtons() {
-    const container = document.getElementById("stepSelector");
-    container .innerHTML = "";
-    jogSteps .forEach((dist) => {
-        const btn = document.createElement("button");
-        btn.className = "step-btn" + (dist === currentStep ? " active" : "");
-        btn.innerText = dist + "mm";
-        btn.addEventListener("click", () => {
-            document.querySelectorAll(".step-btn").forEach(b => b.classList.remove("active"));
-            btn.classList.add("active");
-            currentStep = dist;
-        });
-        container.appendChild(btn);
-    });
-}
-
-function openSettings() {
-    const grid = document.getElementById("settingsGrid");
-    grid .innerHTML = "";
-    for (let i = 0; i < 6; i++)
-
-{
-    const val = jogSteps[i] !== undefined ? jogSteps[i] : "";
-    grid .innerHTML += `<div class="settings-grid-item"><label>$
-
-{
-    i +1
-}
-
-:</label > <input type="number" id="jogVal${i}" step="0.1" value="${val}" > </div > `;
-}
-document.getElementById("joystickRateInput").value = joystickCmdsPerSec;
-document.getElementById("macroFileInput").value = defaultMacroFile;
-document.getElementById("namePatternInput").value = defaultNamePattern;
-document.getElementById("wildcardCharInput").value = wildcardChar;
-document.getElementById("themeSelect").value = isLightMode ? "light" : "dark";
-document.getElementById("invertAxisCheck").checked = invertAxes;
-document.getElementById("swapAxesCheck").checked = swapAxes;
-document.getElementById("settingsOverlay").style.display = "flex";
-}
-
-function closeSettings() {
-    document .getElementById("settingsOverlay").style.display = "none";
-}
-
-function applySettings() {
-    let newSteps = [];
-    for (let i = 0; i < 6; i++)
-
-{
-    const input = document.getElementById(`jogVal${i}`).value;
-    if (input !== "" && !isNaN(input) && parseFloat(input) > 0) newSteps.push(parseFloat(input));
-}
-
-if (newSteps.length > 0) {
-    jogSteps = newSteps;
-    renderStepButtons();
-}
-
-const rateInput = parseFloat(document.getElementById("joystickRateInput").value);
-if (!isNaN(rateInput) && rateInput > 0) {
-    joystickCmdsPerSec = rateInput;
-}
-
-const macroFileInput = document.getElementById("macroFileInput").value.trim();
-if (macroFileInput) {
-    defaultMacroFile = macroFileInput;
-    loadMacrosList();
-}
-
-const patternInput = document.getElementById("namePatternInput").value.trim();
-const wildcardInput = document.getElementById("wildcardCharInput").value.trim();
-if (patternInput && wildcardInput) {
-    defaultNamePattern = patternInput;
-    wildcardChar = wildcardInput.charAt(0);
-    wildcardCounter = 1;
-    updateLocationField();
-}
-
-const themeVal = document.getElementById("themeSelect").value;
-isLightMode = (themeVal === "light");
-if (isLightMode) {
-    document .body.classList.add("light-mode");
-}
-
-else {
-    document .body.classList.remove("light-mode");
-}
-
-invertAxes = document.getElementById("invertAxisCheck").checked;
-swapAxes = document.getElementById("swapAxesCheck").checked;
-
-updateJoystickLabels();
-closeSettings();
-}
-
-async function sendGcode(gcode) {
-    try
-
-{
-    await fetch(`/printer/gcode/script?script=${encodeURIComponent(gcode)}`, { method: "POST" });
-}
-
-catch (error) {
-    console .error("API Error:", error);
-}
-
-}
-
-function triggerHome(gcode, label) {
-    sendGcode(gcode);
-    logToConsole(`Home Axis: ${label}`);
-    setTimeout(fetchPosition, 200);
-}
-
-async function fetchPosition() {
-    try
-
-{
-    const res = await fetch("/printer/objects/query?toolhead");
-    if (res.ok)
-
-{
-    const data = await res.json();
-    const pos = data.result.status.toolhead.position;
-    document .getElementById("valX").innerText = pos[0].toFixed(2);
-    document .getElementById("valY").innerText = pos[1].toFixed(2);
-    document .getElementById("valZ").innerText = pos[2].toFixed(2);
-}
-
-}
-
-catch (error) {
-}
-
-}
-
-async function loadMacrosList() {
-    try
-
-{
-    const response = await fetch(`/machine/remote_method?method=get_pendant_macros&FILE=${defaultMacroFile}`);
-    const data = await response.json();
-    if (data && data.result)
-
-{
-    loadedMacrosData = data.result.macros ||
-
-{
-}
-
-;
-const select = document.getElementById("macroSelect");
-select.innerHTML = '<option value="">-- Select Macro --</option>';
-Object.keys(loadedMacrosData).forEach(macroName => {
-                select.innerHTML += `<option value="${macroName}">${macroName} (${loadedMacrosData[macroName].length} pts)</option>`;
-            });
-}
-}
-
-catch (e) {
-    console .error("Could not load macros list", e);
-}
-
-}
-
-function updateStepSelection() {
-    currentStepIndex = 0;
-    const macroName = document.getElementById("macroSelect").value;
-    const body = document.getElementById("consoleBody");
-    body .innerHTML = "";
-    if (macroName && loadedMacrosData[macroName])
-
-{
-    logToConsole(`--- Loaded Macro: ${macroName} ---`);
-    loadedMacrosData [macroName].forEach((pt, index) => {
-            logToConsole(`# Location: ${pt.location}`);
-            logToConsole(pt.gcode, `macro-line-${macroName}-${index}`);
-        });
-}
-
-}
-
-function runContinuous() {
-    const macroName = document.getElementById("macroSelect").value;
-    if (!macroName)
-
-{
-    alert("Please select a macro first.");
-    return;
-}
-
-logToConsole(`Executing Macro Continuously: ${macroName}`);
-sendGcode(macroName);
-}
-
-function stepNext() {
-    const macroName = document.getElementById("macroSelect").value;
-    if (!macroName)
-
-{
-    alert("Please select a macro first.");
-    return;
-}
-
-const points = loadedMacrosData[macroName];
-if (!points || points.length === 0) {
-    alert("No points found in this macro.");
-    return;
-}
-
-if (currentStepIndex >= points.length) {
-    alert("Reached end of macro points sequence.");
-    currentStepIndex = 0;
-    return;
-}
-
-const step = points[currentStepIndex];
-const lineEl = document.getElementById(`macro-line-${macroName}-${currentStepIndex}`);
-if (lineEl) {
-    document .querySelectorAll(".console-line.active-target").forEach(el => el.classList.remove("active-target"));
-    lineEl .classList.add("active-target");
-    lineEl .scrollIntoView({ behavior: "smooth", block: "nearest" });
-}
-
-logToConsole(`Stepping to [${step.location}]`);
-sendGcode(step.gcode);
-currentStepIndex + +;
-}
-
-function stepPrevious() {
-    const macroName = document.getElementById("macroSelect").value;
-    if (!macroName)
-
-{
-    alert("Please select a macro first.");
-    return;
-}
-
-const points = loadedMacrosData[macroName];
-if (!points || points.length === 0) {
-    alert("No points found in this macro.");
-    return;
-}
-
-if (currentStepIndex <= 0) {
-    alert("Already at the beginning of macro points sequence.");
-    return;
-}
-
-currentStepIndex--;
-const step = points[currentStepIndex];
-const lineEl = document.getElementById(`macro-line-${macroName}-${currentStepIndex}`);
-if (lineEl) {
-    document .querySelectorAll(".console-line.active-target").forEach(el => el.classList.remove("active-target"));
-    lineEl .classList.add("active-target");
-    lineEl .scrollIntoView({ behavior: "smooth", block: "nearest" });
-}
-
-logToConsole(`Stepping back to [${step.location}]`);
-sendGcode(step.gcode);
-}
-
-function touchUpLocation() {
-    const macroName = document.getElementById("macroSelect").value;
-    if (!macroName)
-
-{
-    alert("Please select a macro first.");
-    return;
-}
-
-const points = loadedMacrosData[macroName];
-if (!points || points.length === 0) {
-    alert("No points loaded in this macro.");
-    return;
-}
-
-// Target the currently highlighted/active step (or default to the last stepped index)
-let targetIndex = Math.max(0, currentStepIndex - 1);
-const activePt = points[targetIndex];
-if (!activePt) {
-    alert("No active point selected to touch up.");
-    return;
-}
-
-const locationName = activePt.location;
-const coordMode = document.getElementById("coordMode").value;
-const x = document.getElementById("valX").innerText;
-const y = document.getElementById("valY").innerText;
-const z = document.getElementById("valZ").innerText;
-
-const payload = `SAVE_PENDANT_LOCATION MACRO_NAME="${macroName}" LOCATION_NAME="${locationName}" FILE="${defaultMacroFile}" MODE="${coordMode}" X=$ {
-    x
-}
-
-Y=$ {
-    y
-}
-
-Z=$ {
-    z
-}
-
-`;
-sendGcode(payload);
-logToConsole(`Touched Up [${locationName}] -> X:${x} Y:${y} Z:${z}`);
-
-const btn = document.getElementById("touchUpBtn");
-const orig = btn.innerText;
-btn.innerText = `Updated [$ {
-    locationName
-}
-
-]!`;
-btn.style.backgroundColor = "#00ff88";
-btn.style.color = "#000";
-setTimeout(() => {
-        btn.innerText = orig;
-        btn.style.backgroundColor = "var(--accent)";
-        btn.style.color = "#000";
-        loadMacrosList();
-    }, 1500);
-}
-
-function triggerEStop() {
-    sendGcode("M112");
-    logToConsole("!! EMERGENCY STOP TRIGGERED !!");
-    alert("EMERGENCY STOP TRIGGERED");
-    const checkbox = document.getElementById("motorToggle");
-    if (checkbox.checked)
-
-{
-    checkbox .checked = false;
-    updateMotorState(false);
-}
-
-}
-
-function toggleMotors(e) {
-    e .preventDefault();
-    const checkbox = document.getElementById("motorToggle");
-    checkbox .checked = !checkbox.checked;
-    updateMotorState(checkbox.checked);
-}
-
-function updateMotorState(isEnabled) {
-    motorsEnabled = isEnabled;
-    const buttons = document.querySelectorAll(".hw-jog-btn");
-    const joystickOuter = document.getElementById("xyJoystickOuter");
-    const badge = document.getElementById("motorStatusBadge");
-    if (isEnabled)
-
-{
-    buttons .forEach(btn => btn.disabled = false);
-    joystickOuter .classList.remove("disabled");
-    badge .textContent = "Motors Enabled";
-    badge .classList.add("active");
-    logToConsole("Motors Enabled.");
-}
-
-else {
-    sendGcode("M84");
-    buttons .forEach(btn => btn.disabled = true);
-    joystickOuter .classList.add("disabled");
-    badge .textContent = "Motors Disabled";
-    badge .classList.remove("active");
-    logToConsole("Motors Disabled / Steppers Unpowered.");
-}
-
-}
-
-function switchXYMode(mode) {
-    document .getElementById("xyButtons").style.display = (mode === "buttons") ? "flex" : "none";
-    document .getElementById("xyJoystickOuter").style.display = (mode === "joystick") ? "flex" : "none";
-}
-
-function jog(axis, direction) {
-    if (!motorsEnabled) return;
-    let targetAxis = axis;
-    let dir = direction;
-    if (targetAxis === "X" || targetAxis === "Y")
-
-{
-    if (swapAxes) targetAxis = (targetAxis === "X") ? "Y" : "X";
-    if (invertAxes) dir *= -1;
-}
-
-const distance = currentStep * dir;
-sendGcode(`G91\nG1 ${targetAxis}${distance} F${feedrate}\nG90`);
-logToConsole(`Jog ${targetAxis}: ${distance > 0 ? "+" : ""}${distance}mm`);
-setTimeout(fetchPosition, 100);
-}
-
-function jogVector(xDir, yDir) {
-    if (!motorsEnabled) return;
-    let finalX = xDir;
-    let finalY = yDir;
-    if (swapAxes)
-
-{
-    let temp = finalX;
-    finalX = finalY;
-    finalY = temp;
-}
-
-if (invertAxes) {
-    finalX *= -1;
-    finalY *= -1;
-}
-
-let moveStr = "G1";
-if (finalX !== 0) moveStr + = ` X$ {
-    currentStep * finalX
-}
-
-`;
-if (finalY !== 0) moveStr + = ` Y$ {
-    currentStep * finalY
-}
-
-`;
-moveStr + = ` F$ {
-    feedrate
-}
-
-`;
-
-sendGcode(`G91\n${moveStr}\nG90`);
-
-let dirDesc = [];
-if (finalX !== 0) dirDesc.push(`X:${finalX > 0 ? "+" : ""}${finalX * currentStep}`);
-if (finalY !== 0) dirDesc.push(`Y:${finalY > 0 ? "+" : ""}${finalY * currentStep}`);
-logToConsole(`Joystick Move [${dirDesc.join(", ")}]`);
-
-setTimeout(fetchPosition, 100);
-}
-
-function saveLocation() {
-    const macroName = document.getElementById("macroName").value.trim().toUpperCase().replace(/\s+/g, "_");
-    const locationNameField = document.getElementById("locationName");
-    const locationName = locationNameField.value.trim().toLowerCase().replace(/\s+/g, "_");
-    const coordMode = document.getElementById("coordMode").value;
-    if (!macroName || !locationName)
-
-{
-    alert("Please enter both an overall Macro Name and an individual Location Name.");
-    return;
-}
-
-const x = document.getElementById("valX").innerText;
-const y = document.getElementById("valY").innerText;
-const z = document.getElementById("valZ").innerText;
-
-const payload = `SAVE_PENDANT_LOCATION MACRO_NAME="${macroName}" LOCATION_NAME="${locationName}" FILE="${defaultMacroFile}" MODE="${coordMode}" X=$ {
-    x
-}
-
-Y=$ {
-    y
-}
-
-Z=$ {
-    z
-}
-
-`;
-sendGcode(payload);
-logToConsole(`Saved Point [${locationName}] -> X:${x} Y:${y} Z:${z}`);
-
-wildcardCounter + +;
-locationNameField.value = defaultNamePattern.replace(wildcardChar, wildcardCounter);
-
-const btn = document.getElementById("saveLocationBtn");
-const orig = btn.innerText;
-btn.innerText = "Point Added!";
-btn.style.backgroundColor = "#00ff88";
-btn.style.color = "#000";
-setTimeout(() => {
-        btn.innerText = orig;
-        btn.style.backgroundColor = "#00c853";
-        btn.style.color = "#000";
-        loadMacrosList();
-    }, 1500);
-}
-
-// --- Analog Joystick Implementation ---
-let isDragging = false;
-let jogInterval = null;
-const maxRadius = 32;
-
-function handleJoystickStart(e) {
-    if (!motorsEnabled) return;
-    isDragging = true;
-    const stick = document.getElementById("joystickStick");
-    stick .style.transition = "none";
-    handleJoystickMove(e);
-}
-
-function handleJoystickMove(e) {
-    if (!isDragging || !motorsEnabled) return;
-    const base = document.getElementById("xyJoystick");
-    const stick = document.getElementById("joystickStick");
-    const rect = base.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    let clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    let clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    let dx = clientX - centerX;
-    let dy = clientY - centerY;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    let angle = Math.atan2(-dy, dx) * (180 / Math.PI);
-    if (angle < 0) angle += 360;
-    const sector = Math.round(angle / 45) * 45;
-    const snappedRad = (sector * Math.PI) / 180;
-    const currentRadius = Math.min(distance, maxRadius);
-    const constrainedX = Math.cos(snappedRad) * currentRadius;
-    const constrainedY = -Math.sin(snappedRad) * currentRadius;
-    stick .style.transform = `translate(${constrainedX}px, ${constrainedY}px)`;
-    if (currentRadius > maxRadius * 0.4)
-
-{
-    let xMult = 0, yMult = 0;
-    if (sector === 0)
-
-{
-    xMult = 1;
-    yMult = 0;
-}
-
-if (sector === 45) {
-    xMult = 1;
-    yMult = 1;
-}
-
-if (sector === 90) {
-    xMult = 0;
-    yMult = 1;
-}
-
-if (sector === 135) {
-    xMult = -1;
-    yMult = 1;
-}
-
-if (sector === 180) {
-    xMult = -1;
-    yMult = 0;
-}
-
-if (sector === 225) {
-    xMult = -1;
-    yMult = -1;
-}
-
-if (sector === 270) {
-    xMult = 0;
-    yMult = -1;
-}
-
-if (sector === 315) {
-    xMult = 1;
-    yMult = -1;
-}
-
-const intervalMs = 1000 / joystickCmdsPerSec;
-
-if (!jogInterval) {
-    jogVector(xMult, yMult);
-    jogInterval = setInterval(() => { jogVector(xMult, yMult); }, intervalMs);
-}
-
-}
-
-else {
-    clearInterval(jogInterval);
-    jogInterval = null;
-}
-
-}
-
-function handleJoystickEnd() {
-    if (!isDragging) return;
-    isDragging = false;
-    const stick = document.getElementById("joystickStick");
-    stick .style.transition = "transform 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55)";
-    stick .style.transform = "translate(0px, 0px)";
-    clearInterval(jogInterval);
-    jogInterval = null;
-}
+﻿:root {
+    --casing-bg: linear-gradient(135deg, #2b2f38 0%, #16181d 100%);
+    --casing-border: #0a0b0d;
+    --screen-bg: linear-gradient(180deg, #10141b 0%, #06080b 100%);
+    --screen-border: rgba(255, 255, 255, 0.15);
+    --btn-hw-bg: linear-gradient(180deg, #3a404b 0%, #20242b 100%);
+    --btn-hw-border: #121418;
+    --btn-hw-text: #ffffff;
+    --estop-red: radial-gradient(circle at 35% 35%, #ff5252, #a81c1c);
+    --estop-red-dark: #6e0000;
+    --estop-yellow: #fbc02d;
+    --accent: #00e5ff;
+    --lcd-bg: #030806;
+    --lcd-text: #00ff88;
+    --text-main: #ffffff;
+    --panel-bg: rgba(20, 24, 30, 0.9);
+    --panel-border: rgba(255, 255, 255, 0.12);
+    --hw-col-bg: linear-gradient(180deg, #23272f 0%, #131519 100%);
+    --label-color: #ffffff;
+    --bezel-text: #ffffff;
+}
+
+body.light-mode {
+    --casing-bg: linear-gradient(135deg, #d8dadf 0%, #a8abb2 100%);
+    --casing-border: #777a82;
+    --screen-bg: linear-gradient(180deg, #f0f3f7 0%, #dde2e8 100%);
+    --screen-border: rgba(0, 0, 0, 0.15);
+    --btn-hw-bg: linear-gradient(180deg, #f5f7fa 0%, #d4d9e0 100%);
+    --btn-hw-border: #999dbe;
+    --btn-hw-text: #1a1d22;
+    --accent: #0288d1;
+    --lcd-bg: #112218;
+    --lcd-text: #2e7d32;
+    --text-main: #1a1d22;
+    --panel-bg: rgba(240, 243, 247, 0.85);
+    --panel-border: rgba(0, 0, 0, 0.1);
+    --hw-col-bg: linear-gradient(180deg, #c0c4cd 0%, #9fa3ac 100%);
+    --label-color: #1a1d22;
+    --bezel-text: #1a1d22;
+}
+
+body {
+    margin: 0;
+    padding: 20px;
+    background-color: #07080a;
+    font-family: "Segoe UI", Roboto, Helvetica, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    user-select: none;
+    transition: background-color 0.3s;
+}
+
+.pendant-wrapper {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+.console-column {
+    width: 260px;
+    height: 640px;
+    background: var(--hw-col-bg);
+    border: 3px solid var(--casing-border);
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.2);
+    order: 1;
+}
+
+.pendant-casing {
+    background: var(--casing-bg);
+    border: 3px solid var(--casing-border);
+    border-radius: 20px;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.9), inset 0 1px 3px rgba(255,255,255,0.25), inset 0 -3px 6px rgba(0,0,0,0.8);
+    width: 720px;
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    transition: background 0.3s, border-color 0.3s;
+    order: 2;
+}
+
+.console-header {
+    background: rgba(10, 12, 15, 0.95);
+    color: #d1d5db;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 12px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.console-body {
+    background-color: #040507;
+    color: #00ff88;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 0.8rem;
+    padding: 12px;
+    flex-grow: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    box-shadow: inset 0 0 12px rgba(0,0,0,0.9);
+}
+
+.console-line {
+    padding: 4px 8px;
+    border-radius: 3px;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+    .console-line.active-target {
+        background-color: rgba(0, 255, 136, 0.15);
+        color: #00ffaa;
+        border-left: 3px solid #00ff88;
+        font-weight: bold;
+    }
+
+.console-toggle-btn {
+    background: none;
+    border: none;
+    color: #a5b4fc;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+    .console-toggle-btn:hover {
+        color: #fff;
+    }
+
+.top-bezel {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-right: 10px;
+    padding-left: 5px;
+}
+
+.bezel-left-group {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.bezel-right-group {
+    display: flex;
+    align-items: center;
+    gap: 35px;
+}
+
+.klipper-logo {
+    height: 44px;
+    width: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6)) brightness(1.2);
+}
+
+.main-body-row {
+    display: flex;
+    gap: 20px;
+}
+
+.estop-container {
+    position: relative;
+    width: 105px;
+    height: 105px;
+    background: radial-gradient(circle, #ffe082 0%, #fbc02d 70%, #c68400 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 2px 6px rgba(255,255,255,0.6), inset 0 -4px 8px rgba(0,0,0,0.5), 0 6px 12px rgba(0,0,0,0.7);
+    border: 2px solid #b78103;
+}
+
+.estop-text-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: visible;
+}
+
+.estop-btn {
+    background: var(--estop-red);
+    border: none;
+    border-radius: 50%;
+    width: 62px;
+    height: 62px;
+    box-shadow: 0 6px 0 var(--estop-red-dark), 0 10px 15px rgba(0,0,0,0.7), inset 0 2px 4px rgba(255,255,255,0.4);
+    cursor: pointer;
+    position: relative;
+    z-index: 2;
+}
+
+    .estop-btn:active {
+        transform: translateY(6px);
+        box-shadow: 0 0 0 var(--estop-red-dark), inset 0 2px 4px rgba(0,0,0,0.4);
+    }
+
+.estop-arrows {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 35px;
+    height: 35px;
+    opacity: 0.35;
+    pointer-events: none;
+}
+
+/* Keyswitch Container & Animated Elements */
+.keyswitch-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    color: var(--bezel-text);
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+.keyswitch-base {
+    width: 55px;
+    height: 55px;
+    background: radial-gradient(circle, #25282d 0%, #121417 100%);
+    border: 2px solid #555;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.8), 0 4px 8px rgba(0,0,0,0.5);
+    transition: background 0.4s ease, border-color 0.4s ease;
+}
+
+.keyswitch-knob {
+    width: 38px;
+    height: 38px;
+    background: linear-gradient(135deg, #5a6375, #1a1d22);
+    border-radius: 50%;
+    transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    transform: rotate(-45deg);
+    position: relative;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.6), inset 0 1px 2px rgba(255,255,255,0.3);
+}
+
+    .keyswitch-knob::after {
+        content: '';
+        position: absolute;
+        top: 3px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 3px;
+        height: 14px;
+        background-color: #ff5252;
+        border-radius: 2px;
+        transition: background-color 0.4s ease;
+    }
+
+#motorToggle {
+    display: none;
+}
+
+    /* Animated states triggered by checkbox */
+    #motorToggle:checked + .keyswitch-container .keyswitch-base {
+        background: radial-gradient(circle, #1b3b22 0%, #0d1e11 100%);
+        border-color: #2e7d32;
+    }
+
+    #motorToggle:checked + .keyswitch-container .keyswitch-knob {
+        transform: rotate(45deg);
+    }
+
+        #motorToggle:checked + .keyswitch-container .keyswitch-knob::after {
+            background-color: #00ff88;
+        }
+
+.keyswitch-labels {
+    display: flex;
+    justify-content: space-between;
+    width: 75px;
+    font-size: 0.7rem;
+    font-weight: 800;
+}
+
+.label-off {
+    color: #ff5252;
+    transition: opacity 0.3s ease;
+}
+
+.label-on {
+    color: #00ff88;
+    opacity: 0.4;
+    transition: opacity 0.3s ease;
+}
+
+#motorToggle:checked + .keyswitch-container .keyswitch-labels .label-off {
+    opacity: 0.4;
+}
+
+#motorToggle:checked + .keyswitch-container .keyswitch-labels .label-on {
+    opacity: 1;
+}
+
+.label-motors {
+    font-size: 0.65rem;
+    letter-spacing: 1.5px;
+    color: var(--bezel-text);
+    opacity: 0.9;
+    margin-bottom: 2px;
+}
+
+.screen-area {
+    flex-grow: 1;
+    background: var(--screen-bg);
+    border: 1px solid var(--screen-border);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+    box-shadow: inset 0 2px 10px rgba(0,0,0,0.9), 0 0 25px rgba(0, 229, 255, 0.06);
+    transition: background 0.3s;
+}
+
+.screen-header {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: var(--text-main);
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+    padding-bottom: 6px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.settings-btn-icon {
+    background: none;
+    border: none;
+    font-size: 1.1rem;
+    cursor: pointer;
+    color: var(--text-main);
+    opacity: 0.85;
+    transition: opacity 0.2s;
+}
+
+    .settings-btn-icon:hover {
+        opacity: 1;
+    }
+
+.status-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 4px;
+    background-color: #d32f2f;
+    color: white;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+
+    .status-badge.active {
+        background-color: #00c853;
+    }
+
+.settings-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(5, 7, 10, 0.85);
+    backdrop-filter: blur(8px);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+    border-radius: 12px;
+}
+
+.settings-modal {
+    background: rgba(20, 24, 30, 0.96);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    padding: 22px;
+    border-radius: 12px;
+    width: 85%;
+    max-width: 350px;
+    color: #fff;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.85);
+}
+
+    .settings-modal h3 {
+        margin-top: 0;
+        margin-bottom: 12px;
+        font-size: 1.1rem;
+        color: #fff;
+        border-bottom: 1px solid rgba(255,255,255,0.12);
+        padding-bottom: 6px;
+    }
+
+.settings-section-title {
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: var(--accent);
+    margin: 12px 0 6px 0;
+    letter-spacing: 0.5px;
+}
+
+.settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.settings-grid-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #e5e7eb;
+    font-size: 0.85rem;
+}
+
+.settings-grid input[type="number"] {
+    width: 100%;
+    padding: 6px;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 4px;
+    color: #fff;
+    text-align: center;
+}
+
+.settings-row-single {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-size: 0.85rem;
+    color: #e5e7eb;
+}
+
+    .settings-row-single input[type="text"], .settings-row-single input[type="number"], .settings-row-single select {
+        width: 100px;
+        padding: 5px;
+        background: rgba(0,0,0,0.5);
+        border: 1px solid rgba(255,255,255,0.25);
+        border-radius: 4px;
+        color: #fff;
+        text-align: center;
+    }
+
+.settings-checkboxes {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 15px;
+    font-size: 0.85rem;
+    color: #e5e7eb;
+}
+
+    .settings-checkboxes label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+    }
+
+.settings-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+    .settings-actions button {
+        padding: 6px 14px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 0.85rem;
+    }
+
+.btn-cancel {
+    background-color: #374151;
+    color: #d1d5db;
+}
+
+.btn-apply {
+    background-color: var(--accent);
+    color: #000;
+    font-weight: 700;
+}
+
+.lcd-display {
+    background-color: var(--lcd-bg);
+    border: 1px solid rgba(0, 255, 136, 0.4);
+    border-radius: 6px;
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    box-shadow: inset 0 0 12px rgba(0,0,0,0.95), 0 0 12px rgba(0, 255, 136, 0.12);
+}
+
+.lcd-axis {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.lcd-label {
+    color: rgba(0, 255, 136, 0.7);
+    font-size: 0.85rem;
+    font-weight: bold;
+}
+
+.lcd-value {
+    color: var(--lcd-text);
+    font-family: monospace;
+    font-size: 1.4rem;
+    font-weight: bold;
+    text-shadow: 0 0 10px rgba(0, 255, 136, 0.6);
+}
+
+.homing-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0,0,0,0.3);
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.06);
+}
+
+.homing-label {
+    font-weight: bold;
+    font-size: 0.75rem;
+    color: var(--text-main);
+    letter-spacing: 0.5px;
+}
+
+.home-btn {
+    background: var(--btn-hw-bg);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-weight: bold;
+    font-size: 0.8rem;
+    cursor: pointer;
+    color: var(--text-main);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+    transition: all 0.1s;
+}
+
+    .home-btn:hover {
+        background-color: rgba(0, 229, 255, 0.25);
+        border-color: var(--accent);
+        color: var(--accent);
+    }
+
+.pendant-panels {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: auto;
+}
+
+.panel-box {
+    background: var(--panel-bg);
+    backdrop-filter: blur(8px);
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--panel-border);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+}
+
+.panel-title {
+    font-weight: bold;
+    color: var(--text-main);
+    font-size: 0.85rem;
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.save-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+    .save-grid input, .save-grid select, .playback-grid select {
+        padding: 6px 8px;
+        font-size: 0.85rem;
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 4px;
+        box-sizing: border-box;
+        width: 100%;
+        background: rgba(0,0,0,0.4);
+        color: var(--text-main);
+    }
+
+.macro-name-input {
+    grid-column: 1 / 3;
+}
+
+.btn-action {
+    background-color: #00c853;
+    color: #000;
+    border: none;
+    padding: 8px;
+    font-weight: 700;
+    border-radius: 4px;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 6px;
+    font-size: 0.85rem;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+}
+
+.playback-grid {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    gap: 8px;
+    align-items: center;
+}
+
+.hardware-jog-column {
+    width: 175px;
+    background: var(--hw-col-bg);
+    padding: 15px;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: inset 0 1px 2px rgba(255,255,255,0.2), 0 10px 20px rgba(0,0,0,0.6);
+    transition: background 0.3s;
+}
+
+.jog-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+    align-items: center;
+}
+
+.jog-label {
+    color: var(--text-main);
+    opacity: 0.75;
+    font-size: 0.7rem;
+    font-weight: bold;
+    letter-spacing: 1.5px;
+}
+
+#xyContainer {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 185px;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+#xyButtons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    align-items: center;
+    position: absolute;
+}
+
+.joystick-outer-wrap {
+    position: absolute;
+    width: 170px;
+    height: 170px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.joystick-base-ui {
+    width: 105px;
+    height: 105px;
+    background: radial-gradient(circle, #1a1d22 0%, #06080b 100%);
+    border-radius: 50%;
+    box-shadow: inset 0 6px 15px rgba(0,0,0,0.95), 0 2px 5px rgba(255,255,255,0.15);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: none;
+    border: 1px solid rgba(255,255,255,0.15);
+}
+
+.joystick-stick-ui {
+    width: 38px;
+    height: 38px;
+    background: linear-gradient(135deg, #6b7280, #1a1d22);
+    border-radius: 50%;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.8), inset 0 2px 4px rgba(255,255,255,0.4);
+    position: absolute;
+    cursor: grab;
+    transition: transform 0.05s linear;
+    z-index: 2;
+}
+
+    .joystick-stick-ui:active {
+        cursor: grabbing;
+    }
+
+.joystick-outer-wrap.disabled {
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+.joy-label-ext {
+    position: absolute;
+    font-size: 0.85rem;
+    font-weight: 900;
+    color: var(--label-color);
+    text-shadow: 0 2px 4px rgba(0,0,0,0.95), 0 0 6px rgba(0, 229, 255, 0.4);
+    pointer-events: none;
+    width: 35px;
+    text-align: center;
+}
+
+.jl-yp {
+    top: -2px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.jl-ym {
+    bottom: -2px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.jl-xp {
+    right: -2px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.jl-xm {
+    left: -2px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.hw-jog-btn {
+    background: var(--btn-hw-bg);
+    border: 1px solid var(--btn-hw-border);
+    border-radius: 6px;
+    width: 90px;
+    height: 38px;
+    font-size: 1.05rem;
+    font-weight: bold;
+    color: var(--btn-hw-text);
+    cursor: pointer;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.25);
+    display: flex;
+    justify-content: space-between;
+    padding: 0 12px;
+    align-items: center;
+}
+
+    .hw-jog-btn:active:not(:disabled) {
+        transform: translateY(2px);
+        box-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    }
+
+    .hw-jog-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+    }
+
+.axis-letter {
+    color: var(--btn-hw-text);
+    opacity: 0.8;
+    font-size: 0.8rem;
+}
+
+.z-divider {
+    width: 90px;
+    height: 1px;
+    background-color: rgba(255,255,255,0.2);
+    margin: 2px 0;
+}
+
+.hw-controls-bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    align-items: center;
+    margin-top: 4px;
+    border-top: 1px solid rgba(255,255,255,0.15);
+    padding-top: 10px;
+}
+
+.ui-toggle {
+    display: flex;
+    background: rgba(0,0,0,0.4);
+    border-radius: 6px;
+    padding: 2px;
+    border: 1px solid rgba(255,255,255,0.1);
+    width: 100%;
+    justify-content: space-between;
+}
+
+    .ui-toggle label {
+        padding: 5px 6px;
+        cursor: pointer;
+        border-radius: 4px;
+        font-weight: bold;
+        font-size: 0.7rem;
+        color: var(--text-main);
+        text-align: center;
+        flex: 1;
+    }
+
+    .ui-toggle input[type="radio"] {
+        display: none;
+    }
+
+        .ui-toggle input[type="radio"]:checked + span {
+            background-color: var(--accent);
+            color: #000;
+            display: block;
+            border-radius: 4px;
+            font-weight: 700;
+        }
+
+.step-selector {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    width: 100%;
+}
+
+.step-btn {
+    padding: 5px 2px;
+    font-size: 0.75rem;
+    background: var(--btn-hw-bg);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    color: var(--text-main);
+    box-shadow: 0 2px 3px rgba(0,0,0,0.4);
+    text-align: center;
+}
+
+    .step-btn.active {
+        background-color: var(--accent);
+        color: #000;
+        border-color: var(--accent);
+        font-weight: 700;
+    }
