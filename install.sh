@@ -6,35 +6,46 @@ MOONRAKER_CONF="${CONFIG_DIR}/moonraker.conf"
 PRINTER_CONF="${CONFIG_DIR}/printer.cfg"
 PEARL_CFG="${CONFIG_DIR}/teach_pendant.cfg"
 WEB_DIR="${HOME}/printer_data/system/klipper-teach-pendant"
+REPO_DIR="${HOME}/Klipper-Teach-Pendant"
 
 echo "=================================================="
-echo "Installing Klipper Teach Pendant..."
+echo "Installing / Updating Klipper Teach Pendant..."
 echo "=================================================="
 
-# 1. Create web directory and copy files
+# 1. Create web directory and force-overwrite copy front-end files
 mkdir -p "${WEB_DIR}"
 if [ -f "index.html" ]; then
-    cp index.html styles.css app.js klipper-logo.png "${WEB_DIR}/"
-    echo "✔ Front-end files copied to ${WEB_DIR}"
+    cp -f index.html styles.css app.js klipper-logo.png "${WEB_DIR}/"
+    echo "✔ Front-end files forcefully updated in ${WEB_DIR}"
+elif [ -f "${REPO_DIR}/index.html" ]; then
+    cp -f "${REPO_DIR}/index.html" "${REPO_DIR}/styles.css" "${REPO_DIR}/app.js" "${REPO_DIR}/klipper-logo.png" "${WEB_DIR}/"
+    echo "✔ Front-end files forcefully updated from repo directory"
 else
-    echo "✖ Error: Front-end files not found in the current directory."
+    echo "✖ Error: Front-end files not found."
     exit 1
 fi
 
-# 2. Automatically add Update Manager entry to moonraker.conf
+# 2. Automatically add/update Update Manager entry in moonraker.conf (including install_script)
 if [ -f "$MOONRAKER_CONF" ]; then
     if ! grep -q "\[update_manager klipper-teach-pendant\]" "$MOONRAKER_CONF"; then
         echo "" >> "$MOONRAKER_CONF"
         echo "[update_manager klipper-teach-pendant]" >> "$MOONRAKER_CONF"
         echo "type: web" >> "$MOONRAKER_CONF"
         echo "repo: crashingtardis/Klipper-Teach-Pendant" >> "$MOONRAKER_CONF"
-        echo "path: ${HOME}/Klipper-Teach-Pendant" >> "$MOONRAKER_CONF"
+        echo "path: ${REPO_DIR}" >> "$MOONRAKER_CONF"
         echo "primary_branch: main" >> "$MOONRAKER_CONF"
         echo "is_system_service: False" >> "$MOONRAKER_CONF"
         echo "managed_services: klipper" >> "$MOONRAKER_CONF"
+        echo "install_script: install.sh" >> "$MOONRAKER_CONF"
         echo "✔ Added [update_manager klipper-teach-pendant] to moonraker.conf"
     else
-        echo "ℹ Update manager block already exists in moonraker.conf"
+        # Ensure install_script is present in existing block if missing
+        if ! grep -q "install_script:" "$MOONRAKER_CONF"; then
+            sed -i '/\[update_manager klipper-teach-pendant\]/a install_script: install.sh' "$MOONRAKER_CONF"
+            echo "✔ Added install_script hook to existing update manager config"
+        else
+            echo "ℹ Update manager block and install hook already configured."
+        fi
     fi
 else
     echo "⚠ Warning: moonraker.conf not found at ${MOONRAKER_CONF}."
@@ -46,7 +57,7 @@ if [ ! -f "$PEARL_CFG" ]; then
     echo "# Teach Pendant Saved Points" > "$PEARL_CFG"
     echo "✔ Created empty teach_pendant.cfg"
 else
-    echo "ℹ teach_pendant.cfg already exists."
+    echo "ℹ teach_pendant.cfg already exists (preserving saved points)."
 fi
 
 # 4. Add [include teach_pendant.cfg] to printer.cfg before SAVE_CONFIG block if missing
@@ -85,6 +96,6 @@ EOF
 echo "✔ Custom navigation registered in Mainsail"
 
 echo "=================================================="
-echo "Installation Complete!"
-echo "Please restart Moonraker and Klipper to apply changes."
+echo "Installation / Update Complete!"
+echo "Please restart Moonraker to apply changes."
 echo "=================================================="
