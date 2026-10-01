@@ -25,28 +25,26 @@ else
     exit 1
 fi
 
-# 2. Automatically add/update Update Manager entry in moonraker.conf (including install_script)
+# 2. Automatically add or update Update Manager entry in moonraker.conf
 if [ -f "$MOONRAKER_CONF" ]; then
-    if ! grep -q "\[update_manager klipper-teach-pendant\]" "$MOONRAKER_CONF"; then
-        echo "" >> "$MOONRAKER_CONF"
-        echo "[update_manager klipper-teach-pendant]" >> "$MOONRAKER_CONF"
-        echo "type: web" >> "$MOONRAKER_CONF"
-        echo "repo: crashingtardis/Klipper-Teach-Pendant" >> "$MOONRAKER_CONF"
-        echo "path: ${REPO_DIR}" >> "$MOONRAKER_CONF"
-        echo "primary_branch: main" >> "$MOONRAKER_CONF"
-        echo "is_system_service: False" >> "$MOONRAKER_CONF"
-        echo "managed_services: klipper" >> "$MOONRAKER_CONF"
-        echo "install_script: install.sh" >> "$MOONRAKER_CONF"
-        echo "✔ Added [update_manager klipper-teach-pendant] to moonraker.conf"
-    else
-        # Ensure install_script is present in existing block if missing
-        if ! grep -q "install_script:" "$MOONRAKER_CONF"; then
-            sed -i '/\[update_manager klipper-teach-pendant\]/a install_script: install.sh' "$MOONRAKER_CONF"
-            echo "✔ Added install_script hook to existing update manager config"
-        else
-            echo "ℹ Update manager block and install hook already configured."
-        fi
+    # If the block already exists, remove it so we can rewrite it with the latest settings
+    if grep -q "\[update_manager klipper-teach-pendant\]" "$MOONRAKER_CONF"; then
+        # Use sed to delete the old block (from header until the next empty line or section)
+        sed -i '/\[update_manager klipper-teach-pendant\]/,/^$/d' "$MOONRAKER_CONF"
+        echo "ℹ Removed outdated update manager block from moonraker.conf"
     fi
+
+    # Append the fresh, up-to-date update manager block
+    echo "" >> "$MOONRAKER_CONF"
+    echo "[update_manager klipper-teach-pendant]" >> "$MOONRAKER_CONF"
+    echo "type: web" >> "$MOONRAKER_CONF"
+    echo "repo: crashingtardis/Klipper-Teach-Pendant" >> "$MOONRAKER_CONF"
+    echo "path: ${REPO_DIR}" >> "$MOONRAKER_CONF"
+    echo "primary_branch: main" >> "$MOONRAKER_CONF"
+    echo "is_system_service: False" >> "$MOONRAKER_CONF"
+    echo "managed_services: klipper" >> "$MOONRAKER_CONF"
+    echo "install_script: install.sh" >> "$MOONRAKER_CONF"
+    echo "✔ Added/Updated [update_manager klipper-teach-pendant] in moonraker.conf"
 else
     echo "⚠ Warning: moonraker.conf not found at ${MOONRAKER_CONF}."
 fi
