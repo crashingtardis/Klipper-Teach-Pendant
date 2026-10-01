@@ -27,14 +27,11 @@ fi
 
 # 2. Automatically add or update Update Manager entry in moonraker.conf
 if [ -f "$MOONRAKER_CONF" ]; then
-    # If the block already exists, remove it so we can rewrite it with the latest settings
     if grep -q "\[update_manager klipper-teach-pendant\]" "$MOONRAKER_CONF"; then
-        # Use sed to delete the old block (from header until the next empty line or section)
         sed -i '/\[update_manager klipper-teach-pendant\]/,/^$/d' "$MOONRAKER_CONF"
         echo "ℹ Removed outdated update manager block from moonraker.conf"
     fi
 
-    # Append the fresh, up-to-date update manager block
     echo "" >> "$MOONRAKER_CONF"
     echo "[update_manager klipper-teach-pendant]" >> "$MOONRAKER_CONF"
     echo "type: web" >> "$MOONRAKER_CONF"
@@ -76,7 +73,7 @@ else
     echo "⚠ Warning: printer.cfg not found at ${PRINTER_CONF}."
 fi
 
-# 5. Register inside Mainsail Navigation
+# 5. Register inside Mainsail Navigation using the correct dynamic path
 THEME_DIR="${CONFIG_DIR}/.theme"
 mkdir -p "${THEME_DIR}"
 
@@ -84,14 +81,14 @@ cat << 'EOF' > "${THEME_DIR}/navi.json"
 [
   {
     "title": "Teach Pendant",
-    "href": "/teach_pendant/index.html",
+    "href": "/klipper-teach-pendant/index.html",
     "target": "_self",
     "position": 35,
     "icon": "M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M11,7V11H7V13H11V17H13V13H17V11H13V7H11Z"
   }
 ]
 EOF
-echo "✔ Custom navigation registered in Mainsail"
+echo "✔ Custom navigation registered in Mainsail with correct path"
 
 echo "=================================================="
 echo "Installation / Update Complete!"
