@@ -49,12 +49,19 @@ else
     echo "ℹ teach_pendant.cfg already exists."
 fi
 
-# 4. Add [include teach_pendant.cfg] to printer.cfg if missing
+# 4. Add [include teach_pendant.cfg] to printer.cfg before SAVE_CONFIG block if missing
 if [ -f "$PRINTER_CONF" ]; then
     if ! grep -q "\[include teach_pendant.cfg\]" "$PRINTER_CONF"; then
-        echo "" >> "$PRINTER_CONF"
-        echo "[include teach_pendant.cfg]" >> "$PRINTER_CONF"
-        echo "✔ Added [include teach_pendant.cfg] to printer.cfg"
+        if grep -q "<---------------------- SAVE_CONFIG ---------------------->" "$PRINTER_CONF"; then
+            # Insert right before the SAVE_CONFIG comment block using sed
+            sed -i '/#\*# <---------------------- SAVE_CONFIG ---------------------->/i [include teach_pendant.cfg]\n' "$PRINTER_CONF"
+            echo "✔ Added [include teach_pendant.cfg] to printer.cfg before SAVE_CONFIG block"
+        else
+            # Fallback to appending at the end if SAVE_CONFIG block isn't found
+            echo "" >> "$PRINTER_CONF"
+            echo "[include teach_pendant.cfg]" >> "$PRINTER_CONF"
+            echo "✔ Added [include teach_pendant.cfg] to the end of printer.cfg"
+        fi
     else
         echo "ℹ [include teach_pendant.cfg] already present in printer.cfg"
     fi
