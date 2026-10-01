@@ -31,12 +31,13 @@ else
     report_error "Could not detect a standard Klipper environment."
 fi
 
-# *** THE FIX: Deploy web files INSIDE config so Moonraker can serve them ***
-WEB_DIR="${CONFIG_DIR}/klipper-teach-pendant"
+# *** THE FIX: Deploy web files INSIDE the theme folder which is already exposed via Nginx ***
+THEME_DIR="${CONFIG_DIR}/.theme"
+WEB_DIR="${THEME_DIR}/teach-pendant"
+
 MOONRAKER_CONF="${CONFIG_DIR}/moonraker.conf"
 PRINTER_CONF="${CONFIG_DIR}/printer.cfg"
 PEARL_CFG="${CONFIG_DIR}/teach_pendant.cfg"
-THEME_DIR="${CONFIG_DIR}/.theme"
 
 echo -e "${SR_BLUE}${SR_BOLD}"
 echo "=================================================="
@@ -115,14 +116,13 @@ fi
 
 # 5. Mainsail Navigation Integration
 report_status "Configuring Mainsail Sidebar UI tab..."
-mkdir -p "${THEME_DIR}"
 
-# *** THE FIX: Point href to the Moonraker config file route ***
+# *** THE FIX: Point href to the pre-existing /theme route in Mainsail ***
 cat << 'EOF' > "${THEME_DIR}/navi.json"
 [
   {
     "title": "Teach Pendant",
-    "href": "/server/files/config/klipper-teach-pendant/index.html",
+    "href": "/theme/teach-pendant/index.html",
     "target": "_self",
     "position": 35,
     "icon": "M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M11,7V11H7V13H11V17H13V13H17V11H13V7H11Z"
