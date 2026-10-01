@@ -18,11 +18,40 @@ A physical-style virtual teach pendant web interface designed for Klipper/Moonra
 
 You can automate the installation using the provided `install.sh` script. It will automatically place your web files into your client directory and configure the backend Python extension for Moonraker.
 
-### Quick Install via Script
+### Quick Install via SSH
 
-1. Clone or download this repository onto your Klipper host machine.
-2. Open your terminal and navigate to the folder containing the installation files.
+1. Connect to your Klipper host machine via SSH:
+2. Clone the repository directly from GitHub:
+
+   ```bash
+   git clone https://github.com/crashingtardis/Klipper-Teach-Pendant.git 
+
+3. Navigate into the cloned directory:
+
+   ```bash
+  cd Klipper-Teach-Pendant
+
 3. Run the following command to execute the installer:
+
    ```bash
    chmod +x install.sh
    ./install.sh
+
+The script will prompt you for your Klipper/Moonraker configuration paths if they differ from standard Mainsail/Fluidd defaults, copy index.html, styles.css, app.js, and klipper-logo.png to your web directory, and register the backend Python module with Moonraker).
+
+📖 Usage Guide
+⚡ Power On Motors: Click or tap the Motors key-switch at the top right of the pendant. The switch will rotate into the ON position, enabling the jog buttons and virtual joystick.
+
+🎚️ Select Jog Mode: Under the hardware control column, use the toggle to choose between Buttons or Joystick.
+
+📏 Change Step Distance: Click any of the step size buttons (0.1mm, 0.5mm, 1mm, 5mm, 10mm, 25mm) to adjust your incremental movement size.
+
+📍 Save Points: Enter your overall Macro Name and individual Location Name in the "Add Point to Macro File" panel, then click Save Point to Macro.
+
+▶️ Step-Through Playback:
+
+Select your macro from the dropdown list.
+
+Click Run to execute the entire macro sequence, or use Prev and Next to step through individual moves one at a time while viewing active targets highlighted in the console log.
+
+🎯 Touch Up Points: While stepping through a macro, if a position needs adjustment, jog the machine to the correct location and click Touch Up / Update Active Point to update those coordinates instantly.
