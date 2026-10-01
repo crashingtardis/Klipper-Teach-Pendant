@@ -29,7 +29,7 @@ You can automate the installation using the provided `install.sh` script. It wil
 3. Navigate into the cloned directory:
 
    ```bash
-  cd Klipper-Teach-Pendant
+   cd Klipper-Teach-Pendant
 
 3. Run the following command to execute the installer:
 
@@ -39,7 +39,10 @@ You can automate the installation using the provided `install.sh` script. It wil
 
 The script will prompt you for your Klipper/Moonraker configuration paths if they differ from standard Mainsail/Fluidd defaults, copy index.html, styles.css, app.js, and klipper-logo.png to your web directory, and register the backend Python module with Moonraker).
 
-📖 Usage Guide
+---
+
+## 📖 Usage Guide
+
 ⚡ Power On Motors: Click or tap the Motors key-switch at the top right of the pendant. The switch will rotate into the ON position, enabling the jog buttons and virtual joystick.
 
 🎚️ Select Jog Mode: Under the hardware control column, use the toggle to choose between Buttons or Joystick.
@@ -55,3 +58,5 @@ Select your macro from the dropdown list.
 Click Run to execute the entire macro sequence, or use Prev and Next to step through individual moves one at a time while viewing active targets highlighted in the console log.
 
 🎯 Touch Up Points: While stepping through a macro, if a position needs adjustment, jog the machine to the correct location and click Touch Up / Update Active Point to update those coordinates instantly.
+
+---
