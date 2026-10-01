@@ -1,35 +1,36 @@
 ﻿#!/bin/bash
 
-# Define standard paths for a typical Klipper/Moonraker installation
-MOONRAKER_COMPONENTS_DIR="${HOME}/moonraker/moonraker/components"
+# --- Configuration Paths (Modify if your setup differs) ---
 CONFIG_DIR="${HOME}/printer_data/config"
+MOONRAKER_CONF="${CONFIG_DIR}/moonraker.conf"
+WEB_DIR="${HOME}/printer_data/system/klipper-teach-pendant" # Adjust to your web client directory if needed
 
-# Get the absolute path of the directory containing this script
-REPO_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+# 1. Create web directory if it doesn't exist
+mkdir -p "${WEB_DIR}"
 
-echo "Installing Teach Pendant Plugin..."
+# 2. Copy front-end and backend files
+cp index.html styles.css app.js klipper-logo.png "${WEB_DIR}/"
+# Copy your python backend component script to your moonraker extra args / components folder if applicable
 
-# 1. Link the Moonraker Python Component
-if [ -d "$MOONRAKER_COMPONENTS_DIR" ]; then
-    ln -sf "${REPO_DIR}/teach_pendant.py" "${MOONRAKER_COMPONENTS_DIR}/teach_pendant.py"
-    echo "✓ Linked teach_pendant.py to Moonraker"
+echo "Files successfully copied to ${WEB_DIR}"
+
+# 3. Automatically add Update Manager entry to moonraker.conf
+if [ -f "$MOONRAKER_CONF" ]; then
+    if ! grep -q "\[update_manager klipper-teach-pendant\]" "$MOONRAKER_CONF"; then
+        echo "" >> "$MOONRAKER_CONF"
+        echo "[update_manager klipper-teach-pendant]" >> "$MOONRAKER_CONF"
+        echo "type: git_repo" >> "$MOONRAKER_CONF"
+        echo "path: ${HOME}/Klipper-Teach-Pendant" >> "$MOONRAKER_CONF"
+        echo "origin: https://github.com/crashingtardis/Klipper-Teach-Pendant.git" >> "$MOONRAKER_CONF"
+        echo "primary_branch: main" >> "$MOONRAKER_CONF"
+        echo "is_system_service: False" >> "$MOONRAKER_CONF"
+        echo "managed_services: klipper" >> "$MOONRAKER_CONF"
+        echo "Added [update_manager klipper-teach-pendant] to $MOONRAKER_CONF"
+    else
+        echo "Update manager block already exists in moonraker.conf"
+    fi
 else
-    echo "Error: Moonraker components directory not found at $MOONRAKER_COMPONENTS_DIR"
-    exit 1
+    echo "Warning: moonraker.conf not found at ${MOONRAKER_CONF}. Please add the update manager block manually."
 fi
 
-# 2. Link the Klipper Macro Config
-if [ -d "$CONFIG_DIR" ]; then
-    ln -sf "${REPO_DIR}/teach_pendant.cfg" "${CONFIG_DIR}/teach_pendant.cfg"
-    echo "✓ Linked teach_pendant.cfg to Klipper config directory"
-    echo "⚠️  IMPORTANT: Add [include teach_pendant.cfg] to your printer.cfg"
-else
-    echo "Error: Klipper config directory not found at $CONFIG_DIR"
-    exit 1
-fi
-
-# 3. Restart Moonraker to load the new python component
-echo "Restarting Moonraker service..."
-sudo systemctl restart moonraker
-
-echo "Installation complete!"
+echo "Installation complete! Please restart Moonraker."
