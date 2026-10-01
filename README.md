@@ -37,7 +37,7 @@ You can automate the installation using the provided `install.sh` script. It wil
    chmod +x install.sh
    ./install.sh
 
-The script will prompt you for your Klipper/Moonraker configuration paths if they differ from standard Mainsail/Fluidd defaults, copy index.html, styles.css, app.js, and klipper-logo.png to your web directory, and register the backend Python module with Moonraker).
+(The script will prompt you for your Klipper/Moonraker configuration paths if they differ from standard Mainsail/Fluidd defaults, copy index.html, styles.css, app.js, and klipper-logo.png to your web directory, and register the backend Python module with Moonraker).
 
 ---
 
