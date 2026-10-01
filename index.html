@@ -1,0 +1,196 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Klipper Teach Pendant</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <div class="pendant-wrapper" id="pendantWrapper">
+        <div class="console-column" id="consoleColumn">
+            <div class="console-header">
+                <span>EXECUTION LOG</span>
+                <button class="console-toggle-btn" id="consoleToggleBtn" title="Switch Side">⇄ Side</button>
+            </div>
+            <div class="console-body" id="consoleBody">
+                <div class="console-line" style="color: #666;">// Pendant Ready...</div>
+            </div>
+        </div>
+
+        <div class="pendant-casing">
+            <div class="top-bezel">
+                <div class="bezel-left-group">
+                    <img src="klipper-logo.png" alt="Klipper Logo" class="klipper-logo">
+                </div>
+                <div class="bezel-right-group">
+                    <div class="keyswitch-container">
+                        <span class="label-motors">MOTORS</span>
+                        <input type="checkbox" id="motorToggle">
+                        <label for="motorToggle" class="keyswitch-container" id="motorToggleLabel" style="cursor: pointer;">
+                            <div class="keyswitch-labels">
+                                <span class="label-off">OFF</span>
+                                <span class="label-on">ON</span>
+                            </div>
+                            <div class="keyswitch-base">
+                                <div class="keyswitch-knob"></div>
+                            </div>
+                        </label>
+                    </div>
+                    <div class="estop-container">
+                        <svg class="estop-text-svg" viewBox="0 0 100 100">
+                            <path id="textPathTop" d="M 12 50 A 38 38 0 0 1 88 50" fill="transparent" />
+                            <text font-family="Arial" font-weight="900" font-size="10.5" fill="#111" letter-spacing="1"><textPath href="#textPathTop" startOffset="50%" text-anchor="middle">EMERGENCY</textPath></text>
+                            <path id="textPathBottom" d="M 15 58 A 35 35 0 0 0 85 58" fill="transparent" />
+                            <text font-family="Arial" font-weight="900" font-size="10.5" fill="#111" letter-spacing="2"><textPath href="#textPathBottom" startOffset="50%" text-anchor="middle">STOP</textPath></text>
+                        </svg>
+                        <button class="estop-btn" id="estopBtn">
+                            <svg class="estop-arrows" viewBox="0 0 100 100"><path d="M 20 50 A 30 30 0 0 1 80 50 l -10 -5 m 10 5 l -5 10" stroke="white" stroke-width="4" fill="none" /></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="main-body-row">
+                <div class="screen-area">
+                    <div class="settings-overlay" id="settingsOverlay">
+                        <div class="settings-modal">
+                            <h3>Pendant Settings</h3>
+                            <div class="settings-section-title">Jog Distances (mm)</div>
+                            <div class="settings-grid" id="settingsGrid"></div>
+
+                            <div class="settings-section-title">Joystick & Naming</div>
+                            <div class="settings-row-single">
+                                <span>Joystick Rate (cmds/sec):</span>
+                                <input type="number" id="joystickRateInput" min="0.5" max="10" step="0.5" value="1">
+                            </div>
+                            <div class="settings-row-single">
+                                <span>Default Macro File:</span>
+                                <input type="text" id="macroFileInput" value="teach_pendant.cfg">
+                            </div>
+                            <div class="settings-row-single">
+                                <span>Default Name Pattern:</span>
+                                <input type="text" id="namePatternInput" value="PT*">
+                            </div>
+                            <div class="settings-row-single">
+                                <span>Wildcard Character:</span>
+                                <input type="text" id="wildcardCharInput" maxlength="1" value="*" style="width: 40px;">
+                            </div>
+                            <div class="settings-row-single">
+                                <span>Theme Mode:</span>
+                                <select id="themeSelect">
+                                    <option value="dark">Dark Mode</option>
+                                    <option value="light">Light Mode</option>
+                                </select>
+                            </div>
+
+                            <div class="settings-section-title">Axis Configuration</div>
+                            <div class="settings-checkboxes">
+                                <label><input type="checkbox" id="invertAxisCheck"> Invert Axes (+/-)</label>
+                                <label><input type="checkbox" id="swapAxesCheck"> Swap X / Y Axes</label>
+                            </div>
+
+                            <div class="settings-actions">
+                                <button class="btn-cancel" id="cancelSettingsBtn">Cancel</button>
+                                <button class="btn-apply" id="applySettingsBtn">Apply</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="screen-header">
+                        <button class="settings-btn-icon" id="openSettingsBtn" title="Settings">⚙</button>
+                        <span class="status-badge" id="motorStatusBadge">Motors Disabled</span>
+                    </div>
+
+                    <div class="lcd-display">
+                        <div class="lcd-axis"><span class="lcd-label">X:</span><span class="lcd-value" id="valX">--.--</span></div>
+                        <div class="lcd-axis"><span class="lcd-label">Y:</span><span class="lcd-value" id="valY">--.--</span></div>
+                        <div class="lcd-axis"><span class="lcd-label">Z:</span><span class="lcd-value" id="valZ">--.--</span></div>
+                    </div>
+
+                    <div class="homing-bar">
+                        <span class="homing-label">HOME:</span>
+                        <button class="home-btn" data-gcode="G28" data-label="ALL">ALL</button>
+                        <button class="home-btn" data-gcode="G28 X" data-label="X">X</button>
+                        <button class="home-btn" data-gcode="G28 Y" data-label="Y">Y</button>
+                        <button class="home-btn" data-gcode="G28 X Y" data-label="X & Y">X&Y</button>
+                        <button class="home-btn" data-gcode="G28 Z" data-label="Z">Z</button>
+                    </div>
+
+                    <div class="pendant-panels">
+                        <div class="panel-box">
+                            <div class="panel-title">Add Point to Macro File</div>
+                            <div class="save-grid">
+                                <input type="text" id="macroName" class="macro-name-input" placeholder="Overall Macro Name (e.g. TOOL_PATH)">
+                                <input type="text" id="locationName" placeholder="Location Name">
+                                <select id="coordMode"><option value="ABSOLUTE">Absolute (G90)</option><option value="RELATIVE">Relative (G91)</option></select>
+                            </div>
+                            <button class="btn-action" id="saveLocationBtn">Save Point to Macro</button>
+                        </div>
+
+                        <div class="panel-box">
+                            <div class="panel-title">
+                                <span>Macro Playback / Step-Through</span>
+                                <button style="background:none; border:none; cursor:pointer;" id="refreshMacrosBtn" title="Refresh Macros">🔄</button>
+                            </div>
+                            <div class="playback-grid" style="grid-template-columns: 1fr auto auto auto;">
+                                <select id="macroSelect"><option value="">-- Select Macro --</option></select>
+                                <button class="home-btn" id="runContinuousBtn" style="background:#00c853; color:#000; font-weight:700;">Run</button>
+                                <button class="home-btn btn-step" id="stepPrevBtn" style="background:#ffb74d; color:#000; font-weight:700;">Prev</button>
+                                <button class="home-btn btn-step" id="stepNextBtn" style="background:#ff9800; color:#000; font-weight:700;">Next</button>
+                            </div>
+                            <button class="btn-action" id="touchUpBtn" style="background-color: var(--accent); color: #000; margin-top: 6px;">Touch Up / Update Active Point</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hardware-jog-column">
+                    <div id="xyContainer">
+                        <div id="xyButtons">
+                            <div class="jog-group">
+                                <div class="jog-label">X AXIS</div>
+                                <button class="hw-jog-btn" data-axis="X" data-dir="1" disabled><span class="axis-letter">X</span>+</button>
+                                <button class="hw-jog-btn" data-axis="X" data-dir="-1" disabled><span class="axis-letter">X</span>-</button>
+                            </div>
+                            <div class="jog-group">
+                                <div class="jog-label">Y AXIS</div>
+                                <button class="hw-jog-btn" data-axis="Y" data-dir="1" disabled><span class="axis-letter">Y</span>+</button>
+                                <button class="hw-jog-btn" data-axis="Y" data-dir="-1" disabled><span class="axis-letter">Y</span>-</button>
+                            </div>
+                        </div>
+
+                        <div id="xyJoystickOuter" class="joystick-outer-wrap disabled">
+                            <span class="joy-label-ext jl-yp" id="labelYP">+Y</span>
+                            <span class="joy-label-ext jl-ym" id="labelYM">-Y</span>
+                            <span class="joy-label-ext jl-xp" id="labelXP">+X</span>
+                            <span class="joy-label-ext jl-xm" id="labelXM">-X</span>
+
+                            <div class="joystick-base-ui" id="xyJoystick">
+                                <div class="joystick-stick-ui" id="joystickStick"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="z-divider"></div>
+                    <div class="jog-group">
+                        <div class="jog-label">Z AXIS</div>
+                        <button class="hw-jog-btn" data-axis="Z" data-dir="1" disabled><span class="axis-letter">Z</span>+</button>
+                        <button class="hw-jog-btn" data-axis="Z" data-dir="-1" disabled><span class="axis-letter">Z</span>-</button>
+                    </div>
+
+                    <div class="hw-controls-bottom">
+                        <div class="ui-toggle">
+                            <label><input type="radio" name="xyMode" value="buttons" checked><span>Buttons</span></label>
+                            <label><input type="radio" name="xyMode" value="joystick"><span>Joystick</span></label>
+                        </div>
+                        <div class="step-selector" id="stepSelector"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
