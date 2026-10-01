@@ -25,7 +25,7 @@ else
     exit 1
 fi
 
-# 2. Automatically add or update Update Manager entry in moonraker.conf
+# 2. Automatically add or update Update Manager entry in moonraker.conf as a git_repo
 if [ -f "$MOONRAKER_CONF" ]; then
     if grep -q "\[update_manager klipper-teach-pendant\]" "$MOONRAKER_CONF"; then
         sed -i '/\[update_manager klipper-teach-pendant\]/,/^$/d' "$MOONRAKER_CONF"
@@ -34,9 +34,9 @@ if [ -f "$MOONRAKER_CONF" ]; then
 
     echo "" >> "$MOONRAKER_CONF"
     echo "[update_manager klipper-teach-pendant]" >> "$MOONRAKER_CONF"
-    echo "type: web" >> "$MOONRAKER_CONF"
-    echo "repo: crashingtardis/Klipper-Teach-Pendant" >> "$MOONRAKER_CONF"
+    echo "type: git_repo" >> "$MOONRAKER_CONF"
     echo "path: ${REPO_DIR}" >> "$MOONRAKER_CONF"
+    echo "origin: https://github.com/crashingtardis/Klipper-Teach-Pendant.git" >> "$MOONRAKER_CONF"
     echo "primary_branch: main" >> "$MOONRAKER_CONF"
     echo "is_system_service: False" >> "$MOONRAKER_CONF"
     echo "managed_services: klipper" >> "$MOONRAKER_CONF"
