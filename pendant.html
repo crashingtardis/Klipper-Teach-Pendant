@@ -23,6 +23,7 @@
             --panel-border: #ddd;
             --hw-col-bg: #35373d;
             --label-color: #fff;
+            --bezel-text: #ffffff;
         }
 
         body.light-mode {
@@ -40,6 +41,7 @@
             --panel-border: #cbd5e1;
             --hw-col-bg: #b8bbc2;
             --label-color: #111;
+            --bezel-text: #111111;
         }
 
         body {
@@ -61,7 +63,6 @@
             align-items: flex-start;
         }
 
-        /* Console Window Panel */
         .console-column {
             width: 260px;
             height: 620px;
@@ -72,7 +73,7 @@
             flex-direction: column;
             overflow: hidden;
             box-shadow: 0 15px 25px rgba(0,0,0,0.8);
-            order: 1; /* Default Left */
+            order: 1;
         }
 
         .pendant-casing {
@@ -86,7 +87,7 @@
             flex-direction: column;
             gap: 20px;
             transition: background-color 0.3s, border-color 0.3s;
-            order: 2; /* Default Center/Right of console */
+            order: 2;
         }
 
         .console-header {
@@ -142,10 +143,29 @@
 
         .top-bezel {
             display: flex;
-            justify-content: flex-end;
+            justify-content: space-between;
+            align-items: center;
+            padding-right: 10px;
+            padding-left: 5px;
+        }
+
+        .bezel-left-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .bezel-right-group {
+            display: flex;
             align-items: center;
             gap: 35px;
-            padding-right: 10px;
+        }
+
+        .klipper-logo {
+            height: 48px;
+            width: auto;
+            object-fit: contain;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
         }
 
         .main-body-row {
@@ -207,8 +227,8 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 5px;
-            color: var(--text-main);
+            gap: 4px;
+            color: var(--bezel-text);
             font-size: 0.8rem;
             font-weight: bold;
         }
@@ -269,25 +289,33 @@
             display: flex;
             justify-content: space-between;
             width: 75px;
-            font-size: 0.7rem;
-            margin-top: -3px;
+            font-size: 0.75rem;
+            font-weight: 800;
         }
 
         .label-off {
-            color: #ff6659;
+            color: #ff5252;
         }
 
         .label-on {
-            color: #81c784;
-            opacity: 0.3;
+            color: #66bb6a;
+            opacity: 0.4;
         }
 
         #motorToggle:checked ~ .keyswitch-labels .label-off {
-            opacity: 0.3;
+            opacity: 0.4;
         }
 
         #motorToggle:checked ~ .keyswitch-labels .label-on {
             opacity: 1;
+        }
+
+        .label-motors {
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+            color: var(--bezel-text);
+            opacity: 0.8;
+            margin-top: -2px;
         }
 
         .screen-area {
@@ -310,14 +338,8 @@
             border-bottom: 2px solid #ccc;
             padding-bottom: 6px;
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-end;
             align-items: center;
-        }
-
-        .header-title-group {
-            display: flex;
-            align-items: center;
-            gap: 10px;
         }
 
         .settings-btn-icon {
@@ -407,7 +429,7 @@
             color: #333;
         }
 
-            .settings-row-single input[type="number"], .settings-row-single select {
+            .settings-row-single input[type="text"], .settings-row-single input[type="number"], .settings-row-single select {
                 width: 90px;
                 padding: 5px;
                 border: 1px solid #ccc;
@@ -788,36 +810,11 @@
             top: 60px;
             transform: translateY(-50%);
         }
-
-        .jl-ne {
-            top: 12px;
-            right: 12px;
-            font-size: 0.65rem;
-        }
-
-        .jl-se {
-            bottom: 12px;
-            right: 12px;
-            font-size: 0.65rem;
-        }
-
-        .jl-sw {
-            bottom: 12px;
-            left: 12px;
-            font-size: 0.65rem;
-        }
-
-        .jl-nw {
-            top: 12px;
-            left: 12px;
-            font-size: 0.65rem;
-        }
     </style>
 </head>
 <body>
 
     <div class="pendant-wrapper" id="pendantWrapper">
-        <!-- Console Window Panel -->
         <div class="console-column" id="consoleColumn">
             <div class="console-header">
                 <span>EXECUTION LOG</span>
@@ -828,25 +825,32 @@
             </div>
         </div>
 
-        <!-- Main Pendant Casing -->
         <div class="pendant-casing">
             <div class="top-bezel">
-                <div class="keyswitch-container">
-                    <label for="motorToggle" class="keyswitch-base" onclick="toggleMotors(event)"><div class="keyswitch-knob"></div></label>
-                    <input type="checkbox" id="motorToggle">
-                    <div class="keyswitch-labels"><span class="label-off">OFF</span><span class="label-on">ON</span></div>
-                    <span>MOTORS</span>
+                <div class="bezel-left-group">
+                    <img src="klipper-logo.png" alt="Klipper Logo" class="klipper-logo">
                 </div>
-                <div class="estop-container">
-                    <svg class="estop-text-svg" viewBox="0 0 100 100">
-                        <path id="textPathTop" d="M 15 50 A 35 35 0 0 1 85 50" fill="transparent" />
-                        <text font-family="Arial" font-weight="900" font-size="11" fill="#111" letter-spacing="1"><textPath href="#textPathTop" startOffset="50%" text-anchor="middle">EMERGENCY</textPath></text>
-                        <path id="textPathBottom" d="M 85 50 A 35 35 0 0 1 15 50" fill="transparent" />
-                        <text font-family="Arial" font-weight="900" font-size="11" fill="#111" letter-spacing="2"><textPath href="#textPathBottom" startOffset="50%" text-anchor="middle">STOP</textPath></text>
-                    </svg>
-                    <button class="estop-btn" onclick="triggerEStop()">
-                        <svg class="estop-arrows" viewBox="0 0 100 100"><path d="M 20 50 A 30 30 0 0 1 80 50 l -10 -5 m 10 5 l -5 10" stroke="white" stroke-width="4" fill="none" /></svg>
-                    </button>
+                <div class="bezel-right-group">
+                    <div class="keyswitch-container">
+                        <label for="motorToggle" class="keyswitch-base" onclick="toggleMotors(event)"><div class="keyswitch-knob"></div></label>
+                        <input type="checkbox" id="motorToggle">
+                        <div class="keyswitch-labels">
+                            <span class="label-off">OFF</span>
+                            <span class="label-on">ON</span>
+                        </div>
+                        <span class="label-motors">MOTORS</span>
+                    </div>
+                    <div class="estop-container">
+                        <svg class="estop-text-svg" viewBox="0 0 100 100">
+                            <path id="textPathTop" d="M 15 50 A 35 35 0 0 1 85 50" fill="transparent" />
+                            <text font-family="Arial" font-weight="900" font-size="11" fill="#111" letter-spacing="1"><textPath href="#textPathTop" startOffset="50%" text-anchor="middle">EMERGENCY</textPath></text>
+                            <path id="textPathBottom" d="M 12 55 A 38 38 0 0 0 88 55" fill="transparent" />
+                            <text font-family="Arial" font-weight="900" font-size="11" fill="#111" letter-spacing="2"><textPath href="#textPathBottom" startOffset="50%" text-anchor="middle">STOP</textPath></text>
+                        </svg>
+                        <button class="estop-btn" onclick="triggerEStop()">
+                            <svg class="estop-arrows" viewBox="0 0 100 100"><path d="M 20 50 A 30 30 0 0 1 80 50 l -10 -5 m 10 5 l -5 10" stroke="white" stroke-width="4" fill="none" /></svg>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -858,10 +862,22 @@
                             <div class="settings-section-title">Jog Distances (mm)</div>
                             <div class="settings-grid" id="settingsGrid"></div>
 
-                            <div class="settings-section-title">Joystick & Appearance</div>
+                            <div class="settings-section-title">Joystick & Naming</div>
                             <div class="settings-row-single">
                                 <span>Joystick Rate (cmds/sec):</span>
                                 <input type="number" id="joystickRateInput" min="0.5" max="10" step="0.5" value="1">
+                            </div>
+                            <div class="settings-row-single">
+                                <span>Default Macro File:</span>
+                                <input type="text" id="macroFileInput" value="teach_pendant.cfg">
+                            </div>
+                            <div class="settings-row-single">
+                                <span>Default Name Pattern:</span>
+                                <input type="text" id="namePatternInput" value="PT*">
+                            </div>
+                            <div class="settings-row-single">
+                                <span>Wildcard Character:</span>
+                                <input type="text" id="wildcardCharInput" maxlength="1" value="*" style="width: 40px;">
                             </div>
                             <div class="settings-row-single">
                                 <span>Theme Mode:</span>
@@ -885,10 +901,7 @@
                     </div>
 
                     <div class="screen-header">
-                        <div class="header-title-group">
-                            Tool Calibration
-                            <button class="settings-btn-icon" onclick="openSettings()">⚙️️</button>
-                        </div>
+                        <button class="settings-btn-icon" onclick="openSettings()" title="Settings">⚙</button>
                         <span class="status-badge" id="motorStatusBadge">Motors Disabled</span>
                     </div>
 
@@ -900,11 +913,11 @@
 
                     <div class="homing-bar">
                         <span class="homing-label">HOME:</span>
-                        <button class="home-btn" onclick="sendGcode('G28')">ALL</button>
-                        <button class="home-btn" onclick="sendGcode('G28 X')">X</button>
-                        <button class="home-btn" onclick="sendGcode('G28 Y')">Y</button>
-                        <button class="home-btn" onclick="sendGcode('G28 X Y')">X&Y</button>
-                        <button class="home-btn" onclick="sendGcode('G28 Z')">Z</button>
+                        <button class="home-btn" onclick="triggerHome('G28', 'ALL')">ALL</button>
+                        <button class="home-btn" onclick="triggerHome('G28 X', 'X')">X</button>
+                        <button class="home-btn" onclick="triggerHome('G28 Y', 'Y')">Y</button>
+                        <button class="home-btn" onclick="triggerHome('G28 X Y', 'X & Y')">X&Y</button>
+                        <button class="home-btn" onclick="triggerHome('G28 Z', 'Z')">Z</button>
                     </div>
 
                     <div class="controls-row">
@@ -920,7 +933,7 @@
                             <div class="panel-title">Add Point to Macro File</div>
                             <div class="save-grid">
                                 <input type="text" id="macroName" class="macro-name-input" placeholder="Overall Macro Name (e.g. TOOL_PATH)">
-                                <input type="text" id="locationName" placeholder="Location Name (e.g. dock_1)">
+                                <input type="text" id="locationName" placeholder="Location Name">
                                 <select id="coordMode"><option value="ABSOLUTE">Absolute (G90)</option><option value="RELATIVE">Relative (G91)</option></select>
                             </div>
                             <button class="btn-action" onclick="saveLocation()">Save Point to Macro</button>
@@ -956,14 +969,10 @@
                         </div>
 
                         <div id="xyJoystickOuter" class="joystick-outer-wrap disabled">
-                            <span class="joy-label-ext jl-yp">+Y</span>
-                            <span class="joy-label-ext jl-ym">-Y</span>
-                            <span class="joy-label-ext jl-xp">+X</span>
-                            <span class="joy-label-ext jl-xm">-X</span>
-                            <span class="joy-label-ext jl-ne">+X/+Y</span>
-                            <span class="joy-label-ext jl-se">+X/-Y</span>
-                            <span class="joy-label-ext jl-sw">-X/-Y</span>
-                            <span class="joy-label-ext jl-nw">-X/+Y</span>
+                            <span class="joy-label-ext jl-yp" id="labelYP">+Y</span>
+                            <span class="joy-label-ext jl-ym" id="labelYM">-Y</span>
+                            <span class="joy-label-ext jl-xp" id="labelXP">+X</span>
+                            <span class="joy-label-ext jl-xm" id="labelXM">-X</span>
 
                             <div class="joystick-base-ui" id="xyJoystick">
                                 <div class="joystick-stick-ui" id="joystickStick"></div>
@@ -995,14 +1004,51 @@
         let joystickCmdsPerSec = 1.0;
         let isLightMode = false;
 
+        let defaultMacroFile = "teach_pendant.cfg";
+        let defaultNamePattern = "PT*";
+        let wildcardChar = "*";
+        let wildcardCounter = 1;
+
         function initUI() {
             renderStepButtons();
             loadMacrosList();
+            updateLocationField();
+            updateJoystickLabels();
+        }
+
+        function updateLocationField() {
+            const locInput = document.getElementById('locationName');
+            if (locInput && !locInput.value) {
+                locInput.value = defaultNamePattern.replace(wildcardChar, wildcardCounter);
+            }
+        }
+
+        function updateJoystickLabels() {
+            let topLabel = "+Y";
+            let bottomLabel = "-Y";
+            let rightLabel = "+X";
+            let leftLabel = "-X";
+
+            if (swapAxes) {
+                topLabel = invertAxes ? "-X" : "+X";
+                bottomLabel = invertAxes ? "+X" : "-X";
+                rightLabel = invertAxes ? "-Y" : "+Y";
+                leftLabel = invertAxes ? "+Y" : "-Y";
+            } else if (invertAxes) {
+                topLabel = "-Y";
+                bottomLabel = "+Y";
+                rightLabel = "-X";
+                leftLabel = "+X";
+            }
+
+            document.getElementById('labelYP').innerText = topLabel;
+            document.getElementById('labelYM').innerText = bottomLabel;
+            document.getElementById('labelXP').innerText = rightLabel;
+            document.getElementById('labelXM').innerText = leftLabel;
         }
 
         function toggleConsoleSide() {
             const consoleCol = document.getElementById('consoleColumn');
-            // Swap flex order dynamically between 1 (left) and 3 (right)
             if (consoleCol.style.order === "3") {
                 consoleCol.style.order = "1";
             } else {
@@ -1047,6 +1093,9 @@
                 grid.innerHTML += `<div class="settings-grid-item"><label>${i + 1}:</label><input type="number" id="jogVal${i}" step="0.1" value="${val}"></div>`;
             }
             document.getElementById('joystickRateInput').value = joystickCmdsPerSec;
+            document.getElementById('macroFileInput').value = defaultMacroFile;
+            document.getElementById('namePatternInput').value = defaultNamePattern;
+            document.getElementById('wildcardCharInput').value = wildcardChar;
             document.getElementById('themeSelect').value = isLightMode ? 'light' : 'dark';
             document.getElementById('invertAxisCheck').checked = invertAxes;
             document.getElementById('swapAxesCheck').checked = swapAxes;
@@ -1068,6 +1117,21 @@
                 joystickCmdsPerSec = rateInput;
             }
 
+            const macroFileInput = document.getElementById('macroFileInput').value.trim();
+            if (macroFileInput) {
+                defaultMacroFile = macroFileInput;
+                loadMacrosList();
+            }
+
+            const patternInput = document.getElementById('namePatternInput').value.trim();
+            const wildcardInput = document.getElementById('wildcardCharInput').value.trim();
+            if (patternInput && wildcardInput) {
+                defaultNamePattern = patternInput;
+                wildcardChar = wildcardInput.charAt(0);
+                wildcardCounter = 1;
+                updateLocationField();
+            }
+
             const themeVal = document.getElementById('themeSelect').value;
             isLightMode = (themeVal === 'light');
             if (isLightMode) {
@@ -1079,6 +1143,7 @@
             invertAxes = document.getElementById('invertAxisCheck').checked;
             swapAxes = document.getElementById('swapAxesCheck').checked;
 
+            updateJoystickLabels();
             closeSettings();
         }
 
@@ -1086,6 +1151,12 @@
             try {
                 await fetch(`/printer/gcode/script?script=${encodeURIComponent(gcode)}`, { method: 'POST' });
             } catch (error) { console.error('API Error:', error); }
+        }
+
+        function triggerHome(gcode, label) {
+            sendGcode(gcode);
+            logToConsole(`Home Axis: ${label}`);
+            setTimeout(fetchPosition, 200);
         }
 
         async function fetchPosition() {
@@ -1104,7 +1175,7 @@
 
         async function loadMacrosList() {
             try {
-                const response = await fetch('/machine/remote_method?method=get_pendant_macros&FILE=teach_pendant.cfg');
+                const response = await fetch(`/machine/remote_method?method=get_pendant_macros&FILE=${defaultMacroFile}`);
                 const data = await response.json();
                 if (data && data.result) {
                     loadedMacrosData = data.result.macros || {};
@@ -1253,7 +1324,8 @@
 
         function saveLocation() {
             const macroName = document.getElementById('macroName').value.trim().toUpperCase().replace(/\s+/g, '_');
-            const locationName = document.getElementById('locationName').value.trim().toLowerCase().replace(/\s+/g, '_');
+            const locationNameField = document.getElementById('locationName');
+            const locationName = locationNameField.value.trim().toLowerCase().replace(/\s+/g, '_');
             const coordMode = document.getElementById('coordMode').value;
 
             if (!macroName || !locationName) {
@@ -1265,9 +1337,12 @@
             const y = document.getElementById('valY').innerText;
             const z = document.getElementById('valZ').innerText;
 
-            const payload = `SAVE_PENDANT_LOCATION MACRO_NAME="${macroName}" LOCATION_NAME="${locationName}" FILE="teach_pendant.cfg" MODE="${coordMode}" X=${x} Y=${y} Z=${z}`;
+            const payload = `SAVE_PENDANT_LOCATION MACRO_NAME="${macroName}" LOCATION_NAME="${locationName}" FILE="${defaultMacroFile}" MODE="${coordMode}" X=${x} Y=${y} Z=${z}`;
             sendGcode(payload);
             logToConsole(`Saved Point [${locationName}] -> X:${x} Y:${y} Z:${z}`);
+
+            wildcardCounter++;
+            locationNameField.value = defaultNamePattern.replace(wildcardChar, wildcardCounter);
 
             const btn = document.querySelector('.panel-box .btn-action');
             const orig = btn.innerText;
@@ -1276,7 +1351,6 @@
             setTimeout(() => {
                 btn.innerText = orig;
                 btn.style.backgroundColor = "#4CAF50";
-                document.getElementById('locationName').value = "";
                 loadMacrosList();
             }, 1500);
         }
