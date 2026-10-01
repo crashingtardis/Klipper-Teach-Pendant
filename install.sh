@@ -33,4 +33,21 @@ else
     echo "Warning: moonraker.conf not found at ${MOONRAKER_CONF}. Please add the update manager block manually."
 fi
 
+# --- Register inside Mainsail Navigation ---
+THEME_DIR="${HOME}/printer_data/config/.theme"
+mkdir -p "${THEME_DIR}"
+
+cat << 'EOF' > "${THEME_DIR}/navi.json"
+[
+  {
+    "title": "Teach Pendant",
+    "href": "/teach_pendant/index.html",
+    "target": "_self",
+    "position": 35,
+    "icon": "M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M11,7V11H7V13H11V17H13V13H17V11H13V7H11Z"
+  }
+]
+EOF
+
+echo "Custom navigation added to Mainsail!"
 echo "Installation complete! Please restart Moonraker."
