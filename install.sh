@@ -149,6 +149,40 @@ EOF
 report_ok "Custom navigation tab registered in ${THEME_DIR}/navi.json."
 
 # ==============================================================================
+# Step 7: Configure Nginx Web Routing
+# ==============================================================================
+report_status "Configuring Nginx web routing for the pendant..."
+
+# Create a temporary Nginx config file
+NGINX_CONF="/tmp/teach_pendant_nginx.conf"
+cat << EOF > "$NGINX_CONF"
+location /klipper-teach-pendant/ {
+    alias ${WEB_DIR}/;
+    index index.html;
+    autoindex off;
+}
+EOF
+
+# Move it to the Nginx conf.d directory (Requires sudo - will prompt user if needed)
+report_status "Requesting sudo privileges to update Nginx routing..."
+if sudo mv "$NGINX_CONF" /etc/nginx/conf.d/teach_pendant.conf; then
+    sudo chown root:root /etc/nginx/conf.d/teach_pendant.conf
+    sudo chmod 644 /etc/nginx/conf.d/teach_pendant.conf
+    
+    # Test Nginx config and restart
+    if sudo nginx -t > /dev/null 2>&1; then
+        sudo systemctl restart nginx
+        report_ok "Nginx routing configured and restarted successfully."
+    else
+        report_warning "Nginx configuration test failed. Reverting..."
+        sudo rm -f /etc/nginx/conf.d/teach_pendant.conf
+        sudo systemctl restart nginx
+    fi
+else
+    report_warning "Failed to configure Nginx. You may need to add the routing manually."
+fi
+
+# ==============================================================================
 # Finalization
 # ==============================================================================
 echo -e "${SR_GREEN}${SR_BOLD}"
