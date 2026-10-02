@@ -802,9 +802,15 @@ async function savePendantPoint() {
         // Upload updated file back to Moonraker config root
         const formData = new FormData();
         const blob = new Blob([updatedContent], { type: "text/plain" });
-        formData.append("file", blob, defaultMacroFile);
+        const fileParts = defaultMacroFile.split("/");
+        const uploadFileName = fileParts.pop();
+        const uploadSubPath = fileParts.join("/");
+
+        formData.append("file", blob, uploadFileName);
         formData.append("root", "config");
-        formData.append("path", defaultMacroFile);
+        if (uploadSubPath) {
+            formData.append("path", uploadSubPath);
+        }
 
         const uploadResponse = await fetch(`${API_BASE}/server/files/upload`, {
             method: "POST",
@@ -912,9 +918,15 @@ async function touchUpLocation() {
 
         const formData = new FormData();
         const blob = new Blob([updatedContent], { type: "text/plain" });
-        formData.append("file", blob, defaultMacroFile);
+        const fileParts = defaultMacroFile.split("/");
+        const uploadFileName = fileParts.pop();
+        const uploadSubPath = fileParts.join("/");
+
+        formData.append("file", blob, uploadFileName);
         formData.append("root", "config");
-        formData.append("path", defaultMacroFile);
+        if (uploadSubPath) {
+            formData.append("path", uploadSubPath);
+        }
 
         const uploadResponse = await fetch(`${API_BASE}/server/files/upload`, {
             method: "POST",
