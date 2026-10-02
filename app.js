@@ -1,13 +1,12 @@
 // ==============================================================================
-// Klipper Teach Pendant - Unified Application Logic
+// Klipper Teach Pendant - Main Application Logic
 // ==============================================================================
 
-const API_BASE = ""; // Relative path through Nginx/Mainsail proxy
+const API_BASE = ""; // Uses relative paths proxied by Nginx/Moonraker
 let ws = null;
 let currentPosition = { x: "0.00", y: "0.00", z: "0.00" };
 
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[TeachPendant] Initializing UI...");
     initWebSocket();
     setupEventListeners();
     loadMacrosList();
@@ -23,7 +22,8 @@ function initWebSocket() {
     ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
-        console.log("[TeachPendant] Connected to WebSocket");
+        console.log("Connected to Moonraker WebSocket");
+        // Subscribe to toolhead position updates
         sendWsCommand({
             jsonrpc: "2.0",
             method: "printer.objects.subscribe",
@@ -39,6 +39,8 @@ function initWebSocket() {
 
     ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
+
+        // Handle live coordinate updates
         if (data.params && data.params[0]) {
             const status = data.params[0];
             if (status.gcode_move && status.gcode_move.gcode_position) {
@@ -51,9 +53,9 @@ function initWebSocket() {
         }
     };
 
-    ws.onerror = (err) => console.error("[TeachPendant] WS Error:", err);
+    ws.onerror = (err) => console.error("WebSocket Error:", err);
     ws.onclose = () => {
-        console.warn("[TeachPendant] WS disconnected. Reconnecting in 3s...");
+        console.warn("WebSocket disconnected. Reconnecting in 3s...");
         setTimeout(initWebSocket, 3000);
     };
 }
@@ -72,9 +74,11 @@ async function sendGcode(script) {
         const response = await fetch(`${API_BASE}/printer/gcode/script?script=${encodeURIComponent(script)}`, {
             method: "POST"
         });
-        if (!response.ok) console.error("[TeachPendant] Gcode failed:", script);
+        if (!response.ok) {
+            console.error("Failed to execute G-code:", script);
+        }
     } catch (err) {
-        console.error("[TeachPendant] Gcode exception:", err);
+        console.error("Error sending G-code command:", err);
     }
 }
 
@@ -82,7 +86,7 @@ async function sendGcode(script) {
 // 3. UI Event Handlers
 // ==============================================================================
 function setupEventListeners() {
-    // Jog Buttons
+    // Jog button handlers (.jog-btn elements with data-axis and data-dist attributes)
     document.querySelectorAll(".jog-btn").forEach(button => {
         button.addEventListener("click", () => {
             const axis = button.dataset.axis;
@@ -95,36 +99,17 @@ function setupEventListeners() {
         });
     });
 
-    // Save Point Button Listener
-    const saveBtn = document.getElementById("saveLocationBtn");
-    if (saveBtn) {
-        saveBtn.addEventListener("click", () => triggerSaveFromUI());
-    } else {
-        console.warn("[TeachPendant] Could not find saveLocationBtn");
-    }
+    // Save Point button handler
+    const saveButton = document.getElementById("save-point-btn");
+    if (saveButton) {
+        saveButton.addEventListener("click", () => {
+            const macroName = document.getElementById("macro-name-input")?.value || "TEST_MACRO";
+            const locationName = document.getElementById("location-name-input")?.value || "PT1";
 
-    // Refresh Macros Button
-    const refreshBtn = document.getElementById("refreshMacrosBtn");
-    if (refreshBtn) {
-        refreshBtn.addEventListener("click", () => loadMacrosList());
+            savePendantPoint(macroName, locationName, currentPosition.x, currentPosition.y, currentPosition.z);
+        });
     }
 }
-
-function triggerSaveFromUI() {
-    const macroName = document.getElementById("macroName")?.value || "PICK";
-    const locationName = document.getElementById("locationName")?.value || "PT1";
-    savePendantPoint(macroName, locationName, currentPosition.x, currentPosition.y, currentPosition.z);
-}
-
-window.saveLocation = function (macroName, locationName, x, y, z) {
-    const mName = macroName || document.getElementById("macroName")?.value || "PICK";
-    const lName = locationName || document.getElementById("locationName")?.value || "PT1";
-    const posX = x !== undefined ? x : currentPosition.x;
-    const posY = y !== undefined ? y : currentPosition.y;
-    const posZ = z !== undefined ? z : currentPosition.z;
-
-    savePendantPoint(mName, lName, posX, posY, posZ);
-};
 
 function updateUICoordinates() {
     const xEl = document.getElementById("pos-x");
@@ -152,8 +137,11 @@ async function loadMacrosList() {
     const macroContainer = document.getElementById("macroSelect");
 
     try {
-        const response = await fetch(`${API_BASE}/server/files/config/${filename}?cachebust=${Date.now()}`);
-        if (!response.ok) return;
+        const response = await fetch(`${API_BASE}/server/files/config/${filename}?${Date.now()}`);
+        if (!response.ok) {
+            console.warn(`Could not read ${filename}: ${response.statusText}`);
+            return;
+        }
 
         const text = await response.text();
         const macroRegex = /\[gcode_macro\s+([a-zA-Z0-9_-]+)\]/gi;
@@ -163,6 +151,8 @@ async function loadMacrosList() {
         while ((match = macroRegex.exec(text)) !== null) {
             macros.push(match[1]);
         }
+
+        console.log("Loaded pendant macros from cfg:", macros);
 
         if (macroContainer) {
             macroContainer.innerHTML = "";
@@ -184,7 +174,7 @@ async function loadMacrosList() {
             });
         }
     } catch (err) {
-        console.error("[TeachPendant] Error loading macro list:", err);
+        console.error("Error loading macros list:", err);
     }
 }
 
@@ -193,22 +183,23 @@ async function loadMacrosList() {
 // ==============================================================================
 async function savePendantPoint(macroName, locationName, x, y, z) {
     const filename = "teach_pendant.cfg";
-    console.log(`[TeachPendant] Saving: ${macroName}_${locationName} at X:${x} Y:${y} Z:${z}`);
 
     try {
+        // Step 1: Read current file content
         let currentContent = "";
         try {
-            const response = await fetch(`${API_BASE}/server/files/config/${filename}?cachebust=${Date.now()}`);
+            const response = await fetch(`${API_BASE}/server/files/config/${filename}?${Date.now()}`);
             if (response.ok) {
                 currentContent = await response.text();
             }
         } catch (e) {
-            console.log("[TeachPendant] Starting fresh file content.");
+            console.log("Creating fresh config file content.");
         }
 
-        const cleanMacro = macroName.replace(/[^a-zA-Z0-9_]/g, "_").toUpperCase();
-        const cleanLocation = locationName.replace(/[^a-zA-Z0-9_]/g, "_").toUpperCase();
-        const macroIdentifier = `${cleanMacro}_${cleanLocation}`;
+        // Step 2: Format macro block
+        const cleanMacroName = macroName.replace(/[^a-zA-Z0-9_]/g, "_");
+        const cleanLocationName = locationName.replace(/[^a-zA-Z0-9_]/g, "_");
+        const macroIdentifier = `${cleanMacroName}_${cleanLocationName}`.toUpperCase();
 
         const newMacro = `\n[gcode_macro ${macroIdentifier}]\n` +
             `gcode:\n` +
@@ -218,11 +209,11 @@ async function savePendantPoint(macroName, locationName, x, y, z) {
 
         const updatedContent = currentContent + newMacro;
 
+        // Step 3: Write to Moonraker config root
         const formData = new FormData();
         const blob = new Blob([updatedContent], { type: "text/plain" });
         formData.append("file", blob, filename);
         formData.append("root", "config");
-        formData.append("path", filename); // <-- THIS WAS MISSING AND CAUSING REJECTION
 
         const uploadResponse = await fetch(`${API_BASE}/server/files/upload`, {
             method: "POST",
@@ -230,22 +221,19 @@ async function savePendantPoint(macroName, locationName, x, y, z) {
         });
 
         if (uploadResponse.ok) {
-            console.log(`[TeachPendant] Successfully saved [${macroIdentifier}] to ${filename}`);
+            console.log(`Saved macro [${macroIdentifier}] to ${filename}`);
+            alert(`Saved point: ${macroIdentifier}`);
 
-            const consoleLine = document.createElement("div");
-            consoleLine.className = "console-line";
-            consoleLine.innerText = `Saved point: ${macroIdentifier}`;
-            document.getElementById("consoleBody")?.appendChild(consoleLine);
-
+            // Refresh macro list and reload Klipper config
             await loadMacrosList();
             await fetch(`${API_BASE}/printer/gcode/script?script=RESTART`, { method: "POST" });
         } else {
             const errText = await uploadResponse.text();
-            console.error("[TeachPendant] Save failed:", errText);
+            console.error("Upload error:", errText);
             alert(`Failed to save: ${uploadResponse.statusText}`);
         }
     } catch (err) {
-        console.error("[TeachPendant] Exception during save:", err);
-        alert(`Error: ${err.message}`);
+        console.error("Save error:", err);
+        alert(`Error saving point: ${err.message}`);
     }
 }
