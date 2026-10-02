@@ -1,556 +1,178 @@
-let jogSteps = [0.1, 0.5, 1, 5, 10, 25];
-let currentStep = 1;
-const feedrate = 3000;
-let motorsEnabled = false;
-let loadedMacrosData = {};
-let currentStepIndex = 0;
+// ==============================================================================
+// Klipper Teach Pendant - Main Application Logic
+// ==============================================================================
 
-let invertAxes = false;
-let swapAxes = false;
-let joystickCmdsPerSec = 1.0;
-let isLightMode = false;
-
-let defaultMacroFile = "teach_pendant.cfg";
-let defaultNamePattern = "PT*";
-let wildcardChar = "*";
-let wildcardCounter = 1;
+const API_BASE = ""; // Uses relative paths proxied by Nginx/Moonraker
+let ws = null;
+let currentPosition = { x: 0, y: 0, z: 0 };
 
 document.addEventListener("DOMContentLoaded", () => {
-    initUI();
-    attachEventListeners();
+    initWebSocket();
+    setupEventListeners();
 });
 
-function initUI() {
-    renderStepButtons();
-    loadMacrosList();
-    updateLocationField();
-    updateJoystickLabels();
-    setInterval(fetchPosition, 500);
-}
+// ==============================================================================
+// 1. WebSocket Connection to Moonraker
+// ==============================================================================
+function initWebSocket() {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${protocol}//${window.location.host}/websocket`;
 
-function attachEventListeners() {
-    document.getElementById("consoleToggleBtn").addEventListener("click", toggleConsoleSide);
-    document.getElementById("motorToggleLabel").addEventListener("click", toggleMotors);
-    document.getElementById("estopBtn").addEventListener("click", triggerEStop);
-    document.getElementById("openSettingsBtn").addEventListener("click", openSettings);
-    document.getElementById("cancelSettingsBtn").addEventListener("click", closeSettings);
-    document.getElementById("applySettingsBtn").addEventListener("click", applySettings);
-    document.getElementById("saveLocationBtn").addEventListener("click", saveLocation);
-    document.getElementById("refreshMacrosBtn").addEventListener("click", loadMacrosList);
-    document.getElementById("runContinuousBtn").addEventListener("click", runContinuous);
-    document.getElementById("stepNextBtn").addEventListener("click", stepNext);
-    document.getElementById("stepPrevBtn").addEventListener("click", stepPrevious);
-    document.getElementById("touchUpBtn").addEventListener("click", touchUpLocation);
-    document.getElementById("macroSelect").addEventListener("change", updateStepSelection);
+    ws = new WebSocket(wsUrl);
 
-    // Homing buttons
-    document.querySelectorAll(".homing-bar .home-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-            triggerHome(btn.dataset.gcode, btn.dataset.label);
+    ws.onopen = () => {
+        console.log("Connected to Moonraker WebSocket");
+        // Subscribe to printer state objects to get live coordinates
+        sendWsCommand({
+            jsonrpc: "2.0",
+            method: "printer.objects.subscribe",
+            params: {
+                objects: {
+                    toolhead: ["position", "homed_axes"],
+                    gcode_move: ["gcode_position", "speed_factor"]
+                }
+            },
+            id: 1
         });
-    });
+    };
 
-    // Jog buttons
-    document.querySelectorAll(".hw-jog-btn[data-axis]").forEach(btn => {
-        btn.addEventListener("click", () => {
-            jog(btn.dataset.axis, parseInt(btn.dataset.dir));
-        });
-    });
-
-    // Mode Toggle (Buttons vs Joystick)
-    document.querySelectorAll("input[name='xyMode']").forEach(radio => {
-        radio.addEventListener("change", (e) => {
-            switchXYMode(e.target.value);
-        });
-    });
-
-    // Joystick event bindings
-    const stick = document.getElementById("joystickStick");
-    if (stick) {
-        stick.addEventListener("mousedown", handleJoystickStart);
-        window.addEventListener("mousemove", handleJoystickMove);
-        window.addEventListener("mouseup", handleJoystickEnd);
-        stick.addEventListener("touchstart", handleJoystickStart, { passive: false });
-        window.addEventListener("touchmove", handleJoystickMove, { passive: false });
-        window.addEventListener("touchend", handleJoystickEnd);
-    }
-}
-
-function updateLocationField() {
-    const locInput = document.getElementById("locationName");
-    if (locInput && !locInput.value) {
-        locInput.value = defaultNamePattern.replace(wildcardChar, wildcardCounter);
-    }
-}
-
-function updateJoystickLabels() {
-    let topLabel = "+Y";
-    let bottomLabel = "-Y";
-    let rightLabel = "+X";
-    let leftLabel = "-X";
-
-    if (swapAxes) {
-        topLabel = invertAxes ? "-X" : "+X";
-        bottomLabel = invertAxes ? "+X" : "-X";
-        rightLabel = invertAxes ? "-Y" : "+Y";
-        leftLabel = invertAxes ? "+Y" : "-Y";
-    } else if (invertAxes) {
-        topLabel = "-Y";
-        bottomLabel = "+Y";
-        rightLabel = "-X";
-        leftLabel = "+X";
-    }
-
-    document.getElementById("labelYP").innerText = topLabel;
-    document.getElementById("labelYM").innerText = bottomLabel;
-    document.getElementById("labelXP").innerText = rightLabel;
-    document.getElementById("labelXM").innerText = leftLabel;
-}
-
-function toggleConsoleSide() {
-    const consoleCol = document.getElementById("consoleColumn");
-    consoleCol.style.order = consoleCol.style.order === "3" ? "1" : "3";
-}
-
-function logToConsole(text, lineId = null, isActiveTarget = false) {
-    const body = document.getElementById("consoleBody");
-    if (isActiveTarget) {
-        document.querySelectorAll(".console-line.active-target").forEach(el => el.classList.remove("active-target"));
-    }
-    const line = document.createElement("div");
-    line.className = "console-line" + (isActiveTarget ? " active-target" : "");
-    if (lineId) line.id = lineId;
-    line.innerText = text;
-    body.appendChild(line);
-    body.scrollTop = body.scrollHeight;
-}
-
-function renderStepButtons() {
-    const container = document.getElementById("stepSelector");
-    container.innerHTML = "";
-    jogSteps.forEach((dist) => {
-        const btn = document.createElement("button");
-        btn.className = "step-btn" + (dist === currentStep ? " active" : "");
-        btn.innerText = dist + "mm";
-        btn.addEventListener("click", () => {
-            document.querySelectorAll(".step-btn").forEach(b => b.classList.remove("active"));
-            btn.classList.add("active");
-            currentStep = dist;
-        });
-        container.appendChild(btn);
-    });
-}
-
-function openSettings() {
-    const grid = document.getElementById("settingsGrid");
-    grid.innerHTML = "";
-    for (let i = 0; i < 6; i++) {
-        const val = jogSteps[i] !== undefined ? jogSteps[i] : "";
-        grid.innerHTML += `<div class="settings-grid-item"><label>${i + 1}:</label><input type="number" id="jogVal${i}" step="0.1" value="${val}"></div>`;
-    }
-    document.getElementById("joystickRateInput").value = joystickCmdsPerSec;
-    document.getElementById("macroFileInput").value = defaultMacroFile;
-    document.getElementById("namePatternInput").value = defaultNamePattern;
-    document.getElementById("wildcardCharInput").value = wildcardChar;
-    document.getElementById("themeSelect").value = isLightMode ? "light" : "dark";
-    document.getElementById("invertAxisCheck").checked = invertAxes;
-    document.getElementById("swapAxesCheck").checked = swapAxes;
-    document.getElementById("settingsOverlay").style.display = "flex";
-}
-
-function closeSettings() {
-    document.getElementById("settingsOverlay").style.display = "none";
-}
-
-function applySettings() {
-    let newSteps = [];
-    for (let i = 0; i < 6; i++) {
-        const input = document.getElementById(`jogVal${i}`).value;
-        if (input !== "" && !isNaN(input) && parseFloat(input) > 0) newSteps.push(parseFloat(input));
-    }
-    if (newSteps.length > 0) {
-        jogSteps = newSteps;
-        renderStepButtons();
-    }
-
-    const rateInput = parseFloat(document.getElementById("joystickRateInput").value);
-    if (!isNaN(rateInput) && rateInput > 0) {
-        joystickCmdsPerSec = rateInput;
-    }
-
-    const macroFileInput = document.getElementById("macroFileInput").value.trim();
-    if (macroFileInput) {
-        defaultMacroFile = macroFileInput;
-        loadMacrosList();
-    }
-
-    const patternInput = document.getElementById("namePatternInput").value.trim();
-    const wildcardInput = document.getElementById("wildcardCharInput").value.trim();
-    if (patternInput && wildcardInput) {
-        defaultNamePattern = patternInput;
-        wildcardChar = wildcardInput.charAt(0);
-        wildcardCounter = 1;
-        updateLocationField();
-    }
-
-    const themeVal = document.getElementById("themeSelect").value;
-    isLightMode = (themeVal === "light");
-    if (isLightMode) {
-        document.body.classList.add("light-mode");
-    } else {
-        document.body.classList.remove("light-mode");
-    }
-
-    invertAxes = document.getElementById("invertAxisCheck").checked;
-    swapAxes = document.getElementById("swapAxesCheck").checked;
-
-    updateJoystickLabels();
-    closeSettings();
-}
-
-async function sendGcode(gcode) {
-    try {
-        await fetch(`/printer/gcode/script?script=${encodeURIComponent(gcode)}`, { method: "POST" });
-    } catch (error) {
-        console.error("API Error:", error);
-    }
-}
-
-function triggerHome(gcode, label) {
-    sendGcode(gcode);
-    logToConsole(`Home Axis: ${label}`);
-    setTimeout(fetchPosition, 200);
-}
-
-async function fetchPosition() {
-    try {
-        const res = await fetch("/printer/objects/query?toolhead");
-        if (res.ok) {
-            const data = await res.json();
-            const pos = data.result.status.toolhead.position;
-            document.getElementById("valX").innerText = pos[0].toFixed(2);
-            document.getElementById("valY").innerText = pos[1].toFixed(2);
-            document.getElementById("valZ").innerText = pos[2].toFixed(2);
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        
+        // Handle incoming status updates for live position display
+        if (data.params && data.params[0]) {
+            const status = data.params[0];
+            if (status.gcode_move && status.gcode_move.gcode_position) {
+                const pos = status.gcode_move.gcode_position;
+                currentPosition.x = pos[0].toFixed(2);
+                currentPosition.y = pos[1].toFixed(2);
+                currentPosition.z = pos[2].toFixed(2);
+                updateUI координат();
+            }
         }
-    } catch (error) { }
+    };
+
+    ws.onerror = (err) => console.error("WebSocket Error:", err);
+    ws.onclose = () => {
+        console.warn("WebSocket disconnected. Reconnecting in 3s...");
+        setTimeout(initWebSocket, 3000);
+    };
 }
 
-async function loadMacrosList() {
-    try {
-        const response = await fetch(`/machine/remote_method?method=get_pendant_macros&FILE=${defaultMacroFile}`);
-        const data = await response.json();
-        if (data && data.result) {
-            loadedMacrosData = data.result.macros || {};
-            const select = document.getElementById("macroSelect");
-            select.innerHTML = '<option value="">-- Select Macro --</option>';
-            Object.keys(loadedMacrosData).forEach(macroName => {
-                select.innerHTML += `<option value="${macroName}">${macroName} (${loadedMacrosData[macroName].length} pts)</option>`;
-            });
-        }
-    } catch (e) {
-        console.error("Could not load macros list", e);
+function sendWsCommand(payload) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(payload));
     }
 }
 
-function updateStepSelection() {
-    currentStepIndex = 0;
-    const macroName = document.getElementById("macroSelect").value;
-    const body = document.getElementById("consoleBody");
-    body.innerHTML = "";
-    if (macroName && loadedMacrosData[macroName]) {
-        logToConsole(`--- Loaded Macro: ${macroName} ---`);
-        loadedMacrosData[macroName].forEach((pt, index) => {
-            logToConsole(`# Location: ${pt.location}`);
-            logToConsole(pt.gcode, `macro-line-${macroName}-${index}`);
+// ==============================================================================
+// 2. G-Code Execution Helper
+// ==============================================================================
+async function sendGcode(script) {
+    try {
+        const response = await fetch(`${API_BASE}/printer/gcode/script?script=${encodeURIComponent(script)}`, {
+            method: "POST"
+        });
+        if (!response.ok) {
+            console.error("Failed to execute G-code:", script);
+        }
+    } catch (err) {
+        console.error("Error sending G-code command:", err);
+    }
+}
+
+// ==============================================================================
+// 3. UI Event Listeners & Jogging Controls
+// ==============================================================================
+function setupEventListeners() {
+    // Example binding for jog buttons (assumes buttons have class .jog-btn with data-axis and data-dist)
+    document.querySelectorAll(".jog-btn").forEach(button => {
+        button.addEventListener("click", () => {
+            const axis = button.dataset.axis; // e.g., 'X', 'Y', 'Z'
+            const dist = button.dataset.dist; // e.g., '10', '1', '-10'
+            const feedrate = button.dataset.feedrate || "3000";
+
+            sendGcode("G91");
+            sendGcode(`G1 ${axis}${dist} F${feedrate}`);
+            sendGcode("G90");
+        });
+    });
+
+    // Save Point Form / Button Listener
+    const saveButton = document.getElementById("save-point-btn");
+    if (saveButton) {
+        saveButton.addEventListener("click", () => {
+            const macroName = document.getElementById("macro-name-input")?.value || "TEST_MACRO";
+            const locationName = document.getElementById("location-name-input")?.value || "pt1";
+            
+            savePendantPoint(macroName, locationName, currentPosition.x, currentPosition.y, currentPosition.z);
         });
     }
 }
 
-function runContinuous() {
-    const macroName = document.getElementById("macroSelect").value;
-    if (!macroName) { alert("Please select a macro first."); return; }
-    logToConsole(`Executing Macro Continuously: ${macroName}`);
-    sendGcode(macroName);
+function updateUI координат() {
+    const xEl = document.getElementById("pos-x");
+    const yEl = document.getElementById("pos-y");
+    const zEl = document.getElementById("pos-z");
+
+    if (xEl) xEl.innerText = currentPosition.x;
+    if (yEl) yEl.innerText = currentPosition.y;
+    if (zEl) zEl.innerText = currentPosition.z;
 }
 
-function stepNext() {
-    const macroName = document.getElementById("macroSelect").value;
-    if (!macroName) { alert("Please select a macro first."); return; }
-    const points = loadedMacrosData[macroName];
-    if (!points || points.length === 0) { alert("No points found in this macro."); return; }
+// ==============================================================================
+// 4. Writing Points and Macros to teach_pendant.cfg
+// ==============================================================================
+async function savePendantPoint(macroName, locationName, x, y, z) {
+    const filename = "teach_pendant.cfg";
 
-    if (currentStepIndex >= points.length) {
-        alert("Reached end of macro points sequence.");
-        currentStepIndex = 0;
-        return;
-    }
-
-    const step = points[currentStepIndex];
-    const lineEl = document.getElementById(`macro-line-${macroName}-${currentStepIndex}`);
-    if (lineEl) {
-        document.querySelectorAll(".console-line.active-target").forEach(el => el.classList.remove("active-target"));
-        lineEl.classList.add("active-target");
-        lineEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }
-
-    logToConsole(`Stepping to [${step.location}]`);
-    sendGcode(step.gcode);
-    currentStepIndex++;
-}
-
-function stepPrevious() {
-    const macroName = document.getElementById("macroSelect").value;
-    if (!macroName) { alert("Please select a macro first."); return; }
-    const points = loadedMacrosData[macroName];
-    if (!points || points.length === 0) { alert("No points found in this macro."); return; }
-
-    if (currentStepIndex <= 0) {
-        alert("Already at the beginning of macro points sequence.");
-        return;
-    }
-
-    currentStepIndex--;
-    const step = points[currentStepIndex];
-    const lineEl = document.getElementById(`macro-line-${macroName}-${currentStepIndex}`);
-    if (lineEl) {
-        document.querySelectorAll(".console-line.active-target").forEach(el => el.classList.remove("active-target"));
-        lineEl.classList.add("active-target");
-        lineEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }
-
-    logToConsole(`Stepping back to [${step.location}]`);
-    sendGcode(step.gcode);
-}
-
-function touchUpLocation() {
-    const macroName = document.getElementById("macroSelect").value;
-    if (!macroName) { alert("Please select a macro first."); return; }
-    const points = loadedMacrosData[macroName];
-    if (!points || points.length === 0) { alert("No points loaded in this macro."); return; }
-
-    // Target the currently highlighted/active step (or default to the last stepped index)
-    let targetIndex = Math.max(0, currentStepIndex - 1);
-    const activePt = points[targetIndex];
-    if (!activePt) { alert("No active point selected to touch up."); return; }
-
-    const locationName = activePt.location;
-    const coordMode = document.getElementById("coordMode").value;
-    const x = document.getElementById("valX").innerText;
-    const y = document.getElementById("valY").innerText;
-    const z = document.getElementById("valZ").innerText;
-
-    const payload = `SAVE_PENDANT_LOCATION MACRO_NAME="${macroName}" LOCATION_NAME="${locationName}" FILE="${defaultMacroFile}" MODE="${coordMode}" X=${x} Y=${y} Z=${z}`;
-    sendGcode(payload);
-    logToConsole(`Touched Up [${locationName}] -> X:${x} Y:${y} Z:${z}`);
-
-    const btn = document.getElementById("touchUpBtn");
-    const orig = btn.innerText;
-    btn.innerText = `Updated [${locationName}]!`;
-    btn.style.backgroundColor = "#00ff88";
-    btn.style.color = "#000";
-    setTimeout(() => {
-        btn.innerText = orig;
-        btn.style.backgroundColor = "var(--accent)";
-        btn.style.color = "#000";
-        loadMacrosList();
-    }, 1500);
-}
-
-function triggerEStop() {
-    sendGcode("M112");
-    logToConsole("!! EMERGENCY STOP TRIGGERED !!");
-    alert("EMERGENCY STOP TRIGGERED");
-    const checkbox = document.getElementById("motorToggle");
-    if (checkbox.checked) {
-        checkbox.checked = false;
-        updateMotorState(false);
-    }
-}
-
-function toggleMotors(e) {
-    e.preventDefault();
-    const checkbox = document.getElementById("motorToggle");
-    checkbox.checked = !checkbox.checked;
-    updateMotorState(checkbox.checked);
-}
-
-function updateMotorState(isEnabled) {
-    motorsEnabled = isEnabled;
-    const buttons = document.querySelectorAll(".hw-jog-btn");
-    const joystickOuter = document.getElementById("xyJoystickOuter");
-    const badge = document.getElementById("motorStatusBadge");
-    if (isEnabled) {
-        buttons.forEach(btn => btn.disabled = false);
-        joystickOuter.classList.remove("disabled");
-        badge.textContent = "Motors Enabled";
-        badge.classList.add("active");
-        logToConsole("Motors Enabled.");
-    } else {
-        sendGcode("M84");
-        buttons.forEach(btn => btn.disabled = true);
-        joystickOuter.classList.add("disabled");
-        badge.textContent = "Motors Disabled";
-        badge.classList.remove("active");
-        logToConsole("Motors Disabled / Steppers Unpowered.");
-    }
-}
-
-function switchXYMode(mode) {
-    document.getElementById("xyButtons").style.display = (mode === "buttons") ? "flex" : "none";
-    document.getElementById("xyJoystickOuter").style.display = (mode === "joystick") ? "flex" : "none";
-}
-
-function jog(axis, direction) {
-    if (!motorsEnabled) return;
-    let targetAxis = axis;
-    let dir = direction;
-
-    if (targetAxis === "X" || targetAxis === "Y") {
-        if (swapAxes) targetAxis = (targetAxis === "X") ? "Y" : "X";
-        if (invertAxes) dir *= -1;
-    }
-
-    const distance = currentStep * dir;
-    sendGcode(`G91\nG1 ${targetAxis}${distance} F${feedrate}\nG90`);
-    logToConsole(`Jog ${targetAxis}: ${distance > 0 ? "+" : ""}${distance}mm`);
-    setTimeout(fetchPosition, 100);
-}
-
-function jogVector(xDir, yDir) {
-    if (!motorsEnabled) return;
-
-    let finalX = xDir;
-    let finalY = yDir;
-
-    if (swapAxes) {
-        let temp = finalX;
-        finalX = finalY;
-        finalY = temp;
-    }
-    if (invertAxes) {
-        finalX *= -1;
-        finalY *= -1;
-    }
-
-    let moveStr = "G1";
-    if (finalX !== 0) moveStr += ` X${currentStep * finalX}`;
-    if (finalY !== 0) moveStr += ` Y${currentStep * finalY}`;
-    moveStr += ` F${feedrate}`;
-
-    sendGcode(`G91\n${moveStr}\nG90`);
-
-    let dirDesc = [];
-    if (finalX !== 0) dirDesc.push(`X:${finalX > 0 ? "+" : ""}${finalX * currentStep}`);
-    if (finalY !== 0) dirDesc.push(`Y:${finalY > 0 ? "+" : ""}${finalY * currentStep}`);
-    logToConsole(`Joystick Move [${dirDesc.join(", ")}]`);
-
-    setTimeout(fetchPosition, 100);
-}
-
-function saveLocation() {
-    const macroName = document.getElementById("macroName").value.trim().toUpperCase().replace(/\s+/g, "_");
-    const locationNameField = document.getElementById("locationName");
-    const locationName = locationNameField.value.trim().toLowerCase().replace(/\s+/g, "_");
-    const coordMode = document.getElementById("coordMode").value;
-
-    if (!macroName || !locationName) {
-        alert("Please enter both an overall Macro Name and an individual Location Name.");
-        return;
-    }
-
-    const x = document.getElementById("valX").innerText;
-    const y = document.getElementById("valY").innerText;
-    const z = document.getElementById("valZ").innerText;
-
-    const payload = `SAVE_PENDANT_LOCATION MACRO_NAME="${macroName}" LOCATION_NAME="${locationName}" FILE="${defaultMacroFile}" MODE="${coordMode}" X=${x} Y=${y} Z=${z}`;
-    sendGcode(payload);
-    logToConsole(`Saved Point [${locationName}] -> X:${x} Y:${y} Z:${z}`);
-
-    wildcardCounter++;
-    locationNameField.value = defaultNamePattern.replace(wildcardChar, wildcardCounter);
-
-    const btn = document.getElementById("saveLocationBtn");
-    const orig = btn.innerText;
-    btn.innerText = "Point Added!";
-    btn.style.backgroundColor = "#00ff88";
-    btn.style.color = "#000";
-    setTimeout(() => {
-        btn.innerText = orig;
-        btn.style.backgroundColor = "#00c853";
-        btn.style.color = "#000";
-        loadMacrosList();
-    }, 1500);
-}
-
-// --- Analog Joystick Implementation ---
-let isDragging = false;
-let jogInterval = null;
-const maxRadius = 32;
-
-function handleJoystickStart(e) {
-    if (!motorsEnabled) return;
-    isDragging = true;
-    const stick = document.getElementById("joystickStick");
-    stick.style.transition = "none";
-    handleJoystickMove(e);
-}
-
-function handleJoystickMove(e) {
-    if (!isDragging || !motorsEnabled) return;
-    const base = document.getElementById("xyJoystick");
-    const stick = document.getElementById("joystickStick");
-    const rect = base.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    let clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    let clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
-    let dx = clientX - centerX;
-    let dy = clientY - centerY;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-
-    let angle = Math.atan2(-dy, dx) * (180 / Math.PI);
-    if (angle < 0) angle += 360;
-
-    const sector = Math.round(angle / 45) * 45;
-    const snappedRad = (sector * Math.PI) / 180;
-    const currentRadius = Math.min(distance, maxRadius);
-
-    const constrainedX = Math.cos(snappedRad) * currentRadius;
-    const constrainedY = -Math.sin(snappedRad) * currentRadius;
-
-    stick.style.transform = `translate(${constrainedX}px, ${constrainedY}px)`;
-
-    if (currentRadius > maxRadius * 0.4) {
-        let xMult = 0, yMult = 0;
-
-        if (sector === 0) { xMult = 1; yMult = 0; }
-        if (sector === 45) { xMult = 1; yMult = 1; }
-        if (sector === 90) { xMult = 0; yMult = 1; }
-        if (sector === 135) { xMult = -1; yMult = 1; }
-        if (sector === 180) { xMult = -1; yMult = 0; }
-        if (sector === 225) { xMult = -1; yMult = -1; }
-        if (sector === 270) { xMult = 0; yMult = -1; }
-        if (sector === 315) { xMult = 1; yMult = -1; }
-
-        const intervalMs = 1000 / joystickCmdsPerSec;
-
-        if (!jogInterval) {
-            jogVector(xMult, yMult);
-            jogInterval = setInterval(() => { jogVector(xMult, yMult); }, intervalMs);
+    try {
+        // Step 1: Fetch the existing contents of teach_pendant.cfg from the config folder
+        let currentContent = "";
+        try {
+            const response = await fetch(`${API_BASE}/server/files/config/${filename}`);
+            if (response.ok) {
+                currentContent = await response.text();
+            }
+        } catch (e) {
+            console.log("teach_pendant.cfg is empty or couldn't be read, creating fresh.");
         }
-    } else {
-        clearInterval(jogInterval);
-        jogInterval = null;
-    }
-}
 
-function handleJoystickEnd() {
-    if (!isDragging) return;
-    isDragging = false;
-    const stick = document.getElementById("joystickStick");
-    stick.style.transition = "transform 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55)";
-    stick.style.transform = "translate(0px, 0px)";
-    clearInterval(jogInterval);
-    jogInterval = null;
+        // Step 2: Format the new G-code macro block
+        const macroIdentifier = `${macroName}_${locationName}`.toUpperCase();
+        const newMacro = `\n[gcode_macro ${macroIdentifier}]\n` +
+                         `gcode:\n` +
+                         `    # Auto-saved position: X=${x}, Y=${y}, Z=${z}\n` +
+                         `    G90\n` +
+                         `    G1 X${x} Y${y} Z${z} F3000\n`;
+
+        // Append the new macro to the existing text
+        const updatedContent = currentContent + newMacro;
+
+        // Step 3: Package and upload the updated file back to Moonraker's config root
+        const formData = new FormData();
+        const blob = new Blob([updatedContent], { type: "text/plain" });
+        formData.append("file", blob, filename);
+        formData.append("root", "config");
+        formData.append("path", filename);
+
+        const uploadResponse = await fetch(`${API_BASE}/server/files/upload`, {
+            method: "POST",
+            body: formData
+        });
+
+        if (uploadResponse.ok) {
+            console.log(`Successfully wrote macro [${macroIdentifier}] to /home/crashingtardis/printer_data/config/${filename}`);
+            
+            // Step 4: Trigger a firmware restart / config reload so Klipper registers the new macro instantly
+            await fetch(`${API_BASE}/printer/print/restart`, { method: "POST" });
+            alert(`Successfully saved and registered point: ${locationName}!`);
+        } else {
+            console.error("Failed to write to teach_pendant.cfg via Moonraker API.");
+            alert("Error writing point to configuration file.");
+        }
+    } catch (err) {
+        console.error("Communication error with Moonraker API:", err);
+        alert("Network error communicating with printer API.");
+    }
 }
