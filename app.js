@@ -1,12 +1,13 @@
 // ==============================================================================
-// Klipper Teach Pendant - Main Application Logic
+// Klipper Teach Pendant - Hardened Application Logic
 // ==============================================================================
 
-const API_BASE = ""; // Uses relative paths proxied by Nginx/Moonraker
+const API_BASE = ""; // Relative proxy path
 let ws = null;
 let currentPosition = { x: "0.00", y: "0.00", z: "0.00" };
 
 document.addEventListener("DOMContentLoaded", () => {
+    console.log("[TeachPendant] DOM loaded, initializing...");
     initWebSocket();
     setupEventListeners();
     loadMacrosList();
@@ -22,8 +23,7 @@ function initWebSocket() {
     ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
-        console.log("Connected to Moonraker WebSocket");
-        // Subscribe to toolhead position updates
+        console.log("[TeachPendant] Connected to Moonraker WebSocket");
         sendWsCommand({
             jsonrpc: "2.0",
             method: "printer.objects.subscribe",
@@ -39,8 +39,6 @@ function initWebSocket() {
 
     ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
-
-        // Handle live coordinate updates
         if (data.params && data.params[0]) {
             const status = data.params[0];
             if (status.gcode_move && status.gcode_move.gcode_position) {
@@ -53,9 +51,9 @@ function initWebSocket() {
         }
     };
 
-    ws.onerror = (err) => console.error("WebSocket Error:", err);
+    ws.onerror = (err) => console.error("[TeachPendant] WebSocket Error:", err);
     ws.onclose = () => {
-        console.warn("WebSocket disconnected. Reconnecting in 3s...");
+        console.warn("[TeachPendant] WebSocket disconnected. Reconnecting in 3s...");
         setTimeout(initWebSocket, 3000);
     };
 }
@@ -75,10 +73,10 @@ async function sendGcode(script) {
             method: "POST"
         });
         if (!response.ok) {
-            console.error("Failed to execute G-code:", script);
+            console.error("[TeachPendant] Failed to execute G-code:", script);
         }
     } catch (err) {
-        console.error("Error sending G-code command:", err);
+        console.error("[TeachPendant] Error sending G-code command:", err);
     }
 }
 
@@ -86,7 +84,6 @@ async function sendGcode(script) {
 // 3. UI Event Listeners & Jogging Controls
 // ==============================================================================
 function setupEventListeners() {
-    // Jog button handlers (.jog-btn elements with data-axis and data-dist attributes)
     document.querySelectorAll(".jog-btn").forEach(button => {
         button.addEventListener("click", () => {
             const axis = button.dataset.axis;
@@ -99,15 +96,18 @@ function setupEventListeners() {
         });
     });
 
-    // Save Point button handler
     const saveButton = document.getElementById("save-point-btn");
     if (saveButton) {
+        console.log("[TeachPendant] Attached event listener to #save-point-btn");
         saveButton.addEventListener("click", () => {
+            console.log("[TeachPendant] Save button clicked!");
             const macroName = document.getElementById("macro-name-input")?.value || "TEST_MACRO";
             const locationName = document.getElementById("location-name-input")?.value || "PT1";
 
             savePendantPoint(macroName, locationName, currentPosition.x, currentPosition.y, currentPosition.z);
         });
+    } else {
+        console.warn("[TeachPendant] Warning: Could not find #save-point-btn element in HTML!");
     }
 }
 
@@ -129,9 +129,9 @@ async function loadMacrosList() {
     const macroContainer = document.getElementById("macro-list");
 
     try {
-        const response = await fetch(`${API_BASE}/server/files/config/${filename}?${Date.now()}`);
+        const response = await fetch(`${API_BASE}/server/files/config/${filename}?cachebust=${Date.now()}`);
         if (!response.ok) {
-            console.warn(`Could not read ${filename}: ${response.statusText}`);
+            console.warn(`[TeachPendant] Could not read ${filename}: ${response.statusText}`);
             return;
         }
 
@@ -144,7 +144,7 @@ async function loadMacrosList() {
             macros.push(match[1]);
         }
 
-        console.log("Loaded pendant macros from cfg:", macros);
+        console.log("[TeachPendant] Loaded macros from cfg:", macros);
 
         if (macroContainer) {
             macroContainer.innerHTML = "";
@@ -161,7 +161,7 @@ async function loadMacrosList() {
             });
         }
     } catch (err) {
-        console.error("Error loading macros list:", err);
+        console.error("[TeachPendant] Error loading macros list:", err);
     }
 }
 
@@ -170,20 +170,22 @@ async function loadMacrosList() {
 // ==============================================================================
 async function savePendantPoint(macroName, locationName, x, y, z) {
     const filename = "teach_pendant.cfg";
+    console.log(`[TeachPendant] Attempting to save point: Macro=${macroName}, Location=${locationName}, Pos=(${x}, ${y}, ${z})`);
 
     try {
-        // Step 1: Read current file content
+        // Step 1: Read existing contents
         let currentContent = "";
         try {
-            const response = await fetch(`${API_BASE}/server/files/config/${filename}?${Date.now()}`);
+            const response = await fetch(`${API_BASE}/server/files/config/${filename}?cachebust=${Date.now()}`);
             if (response.ok) {
                 currentContent = await response.text();
+                console.log("[TeachPendant] Successfully fetched existing config content.");
             }
         } catch (e) {
-            console.log("Creating fresh config file content.");
+            console.log("[TeachPendant] File read failed, starting fresh file content.");
         }
 
-        // Step 2: Format macro block
+        // Step 2: Format new macro block
         const cleanMacroName = macroName.replace(/[^a-zA-Z0-9_]/g, "_");
         const cleanLocationName = locationName.replace(/[^a-zA-Z0-9_]/g, "_");
         const macroIdentifier = `${cleanMacroName}_${cleanLocationName}`.toUpperCase();
@@ -196,11 +198,13 @@ async function savePendantPoint(macroName, locationName, x, y, z) {
 
         const updatedContent = currentContent + newMacro;
 
-        // Step 3: Write to Moonraker config root
+        // Step 3: Post via FormData to Moonraker API
         const formData = new FormData();
         const blob = new Blob([updatedContent], { type: "text/plain" });
         formData.append("file", blob, filename);
         formData.append("root", "config");
+
+        console.log("[TeachPendant] Sending upload request to /server/files/upload...");
 
         const uploadResponse = await fetch(`${API_BASE}/server/files/upload`, {
             method: "POST",
@@ -208,19 +212,19 @@ async function savePendantPoint(macroName, locationName, x, y, z) {
         });
 
         if (uploadResponse.ok) {
-            console.log(`Saved macro [${macroIdentifier}] to ${filename}`);
+            console.log(`[TeachPendant] Upload successful! Wrote ${macroIdentifier}`);
             alert(`Saved point: ${macroIdentifier}`);
 
-            // Refresh macro list and reload Klipper config
+            // Refresh macro list and trigger Klipper restart
             await loadMacrosList();
             await fetch(`${API_BASE}/printer/gcode/script?script=RESTART`, { method: "POST" });
         } else {
             const errText = await uploadResponse.text();
-            console.error("Upload error:", errText);
-            alert(`Failed to save: ${uploadResponse.statusText}`);
+            console.error("[TeachPendant] Upload API Error:", uploadResponse.status, errText);
+            alert(`Upload failed (${uploadResponse.status}): ${errText}`);
         }
     } catch (err) {
-        console.error("Save error:", err);
+        console.error("[TeachPendant] Save error:", err);
         alert(`Error saving point: ${err.message}`);
     }
 }
