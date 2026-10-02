@@ -4,11 +4,12 @@
 
 const API_BASE = ""; // Uses relative paths proxied by Nginx/Moonraker
 let ws = null;
-let currentPosition = { x: 0, y: 0, z: 0 };
+let currentPosition = { x: "0.00", y: "0.00", z: "0.00" };
 
 document.addEventListener("DOMContentLoaded", () => {
     initWebSocket();
     setupEventListeners();
+    loadMacrosList();
 });
 
 // ==============================================================================
@@ -22,7 +23,7 @@ function initWebSocket() {
 
     ws.onopen = () => {
         console.log("Connected to Moonraker WebSocket");
-        // Subscribe to printer state objects to get live coordinates
+        // Subscribe to toolhead position updates
         sendWsCommand({
             jsonrpc: "2.0",
             method: "printer.objects.subscribe",
@@ -38,8 +39,8 @@ function initWebSocket() {
 
     ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        
-        // Handle incoming status updates for live position display
+
+        // Handle live coordinate updates
         if (data.params && data.params[0]) {
             const status = data.params[0];
             if (status.gcode_move && status.gcode_move.gcode_position) {
@@ -85,11 +86,11 @@ async function sendGcode(script) {
 // 3. UI Event Listeners & Jogging Controls
 // ==============================================================================
 function setupEventListeners() {
-    // Example binding for jog buttons (assumes buttons have class .jog-btn with data-axis and data-dist)
+    // Jog button handlers (.jog-btn elements with data-axis and data-dist attributes)
     document.querySelectorAll(".jog-btn").forEach(button => {
         button.addEventListener("click", () => {
-            const axis = button.dataset.axis; // e.g., 'X', 'Y', 'Z'
-            const dist = button.dataset.dist; // e.g., '10', '1', '-10'
+            const axis = button.dataset.axis;
+            const dist = button.dataset.dist;
             const feedrate = button.dataset.feedrate || "3000";
 
             sendGcode("G91");
@@ -98,13 +99,13 @@ function setupEventListeners() {
         });
     });
 
-    // Save Point Form / Button Listener
+    // Save Point button handler
     const saveButton = document.getElementById("save-point-btn");
     if (saveButton) {
         saveButton.addEventListener("click", () => {
             const macroName = document.getElementById("macro-name-input")?.value || "TEST_MACRO";
-            const locationName = document.getElementById("location-name-input")?.value || "pt1";
-            
+            const locationName = document.getElementById("location-name-input")?.value || "PT1";
+
             savePendantPoint(macroName, locationName, currentPosition.x, currentPosition.y, currentPosition.z);
         });
     }
@@ -121,40 +122,85 @@ function updateUICoordinates() {
 }
 
 // ==============================================================================
-// 4. Writing Points and Macros to teach_pendant.cfg
+// 4. Reading Macros from teach_pendant.cfg
+// ==============================================================================
+async function loadMacrosList() {
+    const filename = "teach_pendant.cfg";
+    const macroContainer = document.getElementById("macro-list");
+
+    try {
+        const response = await fetch(`${API_BASE}/server/files/config/${filename}?${Date.now()}`);
+        if (!response.ok) {
+            console.warn(`Could not read ${filename}: ${response.statusText}`);
+            return;
+        }
+
+        const text = await response.text();
+        const macroRegex = /\[gcode_macro\s+([a-zA-Z0-9_-]+)\]/gi;
+        const macros = [];
+        let match;
+
+        while ((match = macroRegex.exec(text)) !== null) {
+            macros.push(match[1]);
+        }
+
+        console.log("Loaded pendant macros from cfg:", macros);
+
+        if (macroContainer) {
+            macroContainer.innerHTML = "";
+            if (macros.length === 0) {
+                macroContainer.innerHTML = "<option disabled>No macros saved yet</option>";
+                return;
+            }
+
+            macros.forEach(macroName => {
+                const opt = document.createElement("option");
+                opt.value = macroName;
+                opt.textContent = macroName;
+                macroContainer.appendChild(opt);
+            });
+        }
+    } catch (err) {
+        console.error("Error loading macros list:", err);
+    }
+}
+
+// ==============================================================================
+// 5. Writing Points and Macros to teach_pendant.cfg
 // ==============================================================================
 async function savePendantPoint(macroName, locationName, x, y, z) {
     const filename = "teach_pendant.cfg";
 
     try {
-        // Step 1: Fetch the existing contents of teach_pendant.cfg from the config folder
+        // Step 1: Read current file content
         let currentContent = "";
         try {
-            const response = await fetch(`${API_BASE}/server/files/config/${filename}`);
+            const response = await fetch(`${API_BASE}/server/files/config/${filename}?${Date.now()}`);
             if (response.ok) {
                 currentContent = await response.text();
             }
         } catch (e) {
-            console.log("teach_pendant.cfg is empty or couldn't be read, creating fresh.");
+            console.log("Creating fresh config file content.");
         }
 
-        // Step 2: Format the new G-code macro block
-        const macroIdentifier = `${macroName}_${locationName}`.toUpperCase();
+        // Step 2: Format macro block
+        const cleanMacroName = macroName.replace(/[^a-zA-Z0-9_]/g, "_");
+        const cleanLocationName = locationName.replace(/[^a-zA-Z0-9_]/g, "_");
+        const macroIdentifier = `${cleanMacroName}_${cleanLocationName}`.toUpperCase();
+
         const newMacro = `\n[gcode_macro ${macroIdentifier}]\n` +
                          `gcode:\n` +
-                         `    # Auto-saved position: X=${x}, Y=${y}, Z=${z}\n` +
+                         `    # Position: X=${x}, Y=${y}, Z=${z}\n` +
                          `    G90\n` +
                          `    G1 X${x} Y${y} Z${z} F3000\n`;
 
-        // Append the new macro to the existing text
         const updatedContent = currentContent + newMacro;
 
-        // Step 3: Package and upload the updated file back to Moonraker's config root
+        // Step 3: Write to Moonraker config root
         const formData = new FormData();
         const blob = new Blob([updatedContent], { type: "text/plain" });
         formData.append("file", blob, filename);
         formData.append("root", "config");
-        formData.append("path", filename);
 
         const uploadResponse = await fetch(`${API_BASE}/server/files/upload`, {
             method: "POST",
@@ -162,17 +208,19 @@ async function savePendantPoint(macroName, locationName, x, y, z) {
         });
 
         if (uploadResponse.ok) {
-            console.log(`Successfully wrote macro [${macroIdentifier}] to /home/crashingtardis/printer_data/config/${filename}`);
-            
-            // Step 4: Trigger a firmware restart / config reload so Klipper registers the new macro instantly
-            await fetch(`${API_BASE}/printer/print/restart`, { method: "POST" });
-            alert(`Successfully saved and registered point: ${locationName}!`);
+            console.log(`Saved macro [${macroIdentifier}] to ${filename}`);
+            alert(`Saved point: ${macroIdentifier}`);
+
+            // Refresh macro list and reload Klipper config
+            await loadMacrosList();
+            await fetch(`${API_BASE}/printer/gcode/script?script=RESTART`, { method: "POST" });
         } else {
-            console.error("Failed to write to teach_pendant.cfg via Moonraker API.");
-            alert("Error writing point to configuration file.");
+            const errText = await uploadResponse.text();
+            console.error("Upload error:", errText);
+            alert(`Failed to save: ${uploadResponse.statusText}`);
         }
     } catch (err) {
-        console.error("Communication error with Moonraker API:", err);
-        alert("Network error communicating with printer API.");
+        console.error("Save error:", err);
+        alert(`Error saving point: ${err.message}`);
     }
 }
