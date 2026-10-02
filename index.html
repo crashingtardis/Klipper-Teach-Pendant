@@ -119,28 +119,18 @@
                     </div>
 
                     <div class="pendant-panels">
-                        <div class="panel-box">
-                            <div class="panel-title">Add Point to Macro File</div>
-                            <div class="save-grid">
-                                <input type="text" id="macroName" class="macro-name-input" placeholder="Overall Macro Name (e.g. TOOL_PATH)">
-                                <input type="text" id="locationName" placeholder="Location Name">
-                                <select id="coordMode"><option value="ABSOLUTE">Absolute (G90)</option><option value="RELATIVE">Relative (G91)</option></select>
-                            </div>
-                            <button class="btn-action" id="saveLocationBtn">Save Point to Macro</button>
+                        <div class="save-section">
+                            <!-- The IDs here MUST match exactly what app.js is looking for -->
+                            <input type="text" id="macro-name-input" placeholder="Macro (e.g. PICK)" value="PICK" />
+                            <input type="text" id="location-name-input" placeholder="Point (e.g. PT1)" value="PT1" />
+
+                            <!-- Notice there is NO onclick="" attribute here. app.js handles the click dynamically. -->
+                            <button id="save-point-btn">Save Point</button>
                         </div>
 
-                        <div class="panel-box">
-                            <div class="panel-title">
-                                <span>Macro Playback / Step-Through</span>
-                                <button style="background:none; border:none; cursor:pointer;" id="refreshMacrosBtn" title="Refresh Macros">🔄</button>
-                            </div>
-                            <div class="playback-grid" style="grid-template-columns: 1fr auto auto auto;">
-                                <select id="macroSelect"><option value="">-- Select Macro --</option></select>
-                                <button class="home-btn" id="runContinuousBtn" style="background:#00c853; color:#000; font-weight:700;">Run</button>
-                                <button class="home-btn btn-step" id="stepPrevBtn" style="background:#ffb74d; color:#000; font-weight:700;">Prev</button>
-                                <button class="home-btn btn-step" id="stepNextBtn" style="background:#ff9800; color:#000; font-weight:700;">Next</button>
-                            </div>
-                            <button class="btn-action" id="touchUpBtn" style="background-color: var(--accent); color: #000; margin-top: 6px;">Touch Up / Update Active Point</button>
+                        <!-- This empty select box is required for app.js to populate the saved macros -->
+                        <div class="macro-list-container">
+                            <select id="macro-list"></select>
                         </div>
                     </div>
                 </div>
