@@ -1,5 +1,5 @@
 // ==============================================================================
-// Klipper Teach Pendant - Main Application Logic (Fully Fixed ID Sync)
+// Klipper Teach Pendant - Fully Restored Application Logic
 // ==============================================================================
 
 const API_BASE = ""; // Uses relative paths proxied by Nginx/Moonraker
@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ==============================================================================
-// 1. WebSocket Connection for Live Coordinates
+// 1. WebSocket Connection & Live Coordinates
 // ==============================================================================
 function initWebSocket() {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -22,7 +22,7 @@ function initWebSocket() {
     ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
-        console.log("Connected to Moonraker WebSocket");
+        logToConsole("Connected to Moonraker WebSocket");
         sendWsCommand({
             jsonrpc: "2.0",
             method: "printer.objects.subscribe",
@@ -38,21 +38,34 @@ function initWebSocket() {
 
     ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
+
+        // Handle Moonraker status updates
         if (data.params && data.params[0]) {
             const status = data.params[0];
-            if (status.gcode_move && status.gcode_move.gcode_position) {
-                const pos = status.gcode_move.gcode_position;
+
+            // Check for gcode_position or toolhead position
+            const pos = status.gcode_move?.gcode_position || status.toolhead?.position;
+            if (pos) {
                 currentPosition.x = parseFloat(pos[0]).toFixed(2);
                 currentPosition.y = parseFloat(pos[1]).toFixed(2);
                 currentPosition.z = parseFloat(pos[2]).toFixed(2);
                 updateUICoordinates();
+            }
+
+            // Update motor status badge if homed/enabled state changes
+            if (status.toolhead?.homed_axes) {
+                const badge = document.getElementById("motorStatusBadge");
+                if (badge) {
+                    badge.innerText = `Homed: ${status.toolhead.homed_axes.toUpperCase()}`;
+                    badge.classList.add("active");
+                }
             }
         }
     };
 
     ws.onerror = (err) => console.error("WebSocket Error:", err);
     ws.onclose = () => {
-        console.warn("WebSocket disconnected. Reconnecting in 3s...");
+        logToConsole("WebSocket disconnected. Reconnecting in 3s...");
         setTimeout(initWebSocket, 3000);
     };
 }
@@ -64,7 +77,7 @@ function sendWsCommand(payload) {
 }
 
 // ==============================================================================
-// 2. G-Code Helper
+// 2. G-Code & Console Helpers
 // ==============================================================================
 async function sendGcode(script) {
     try {
@@ -72,56 +85,100 @@ async function sendGcode(script) {
             method: "POST"
         });
         if (!response.ok) {
-            console.error("Failed to execute G-code:", script);
+            logToConsole(`Failed to execute G-code: ${script}`);
         }
     } catch (err) {
-        console.error("Error sending G-code command:", err);
+        logToConsole(`Error sending G-code: ${err.message}`);
     }
 }
 
+function logToConsole(message) {
+    const consoleBody = document.getElementById("consoleBody");
+    if (consoleBody) {
+        const line = document.createElement("div");
+        line.className = "console-line";
+        line.innerText = message;
+        consoleBody.appendChild(line);
+        consoleBody.scrollTop = consoleBody.scrollHeight;
+    }
+    console.log(message);
+}
+
 // ==============================================================================
-// 3. UI Event Handlers (Matched to index.html IDs)
+// 3. UI Event Handlers (Jog, Save, Console Toggle, Joystick Mode)
 // ==============================================================================
 function setupEventListeners() {
-    document.querySelectorAll(".jog-btn").forEach(button => {
+    // Jog Buttons (.hw-jog-btn or .jog-btn)
+    document.querySelectorAll(".hw-jog-btn, .jog-btn").forEach(button => {
         button.addEventListener("click", () => {
             const axis = button.dataset.axis;
-            const dist = button.dataset.dist;
-            const feedrate = button.dataset.feedrate || "3000";
+            const dir = button.dataset.dir || "1";
+            const dist = button.dataset.dist || "1";
+            const moveVal = button.dataset.axis ? `${dir > 0 ? '' : '-'}${Math.abs(dist)}` : null;
 
-            sendGcode("G91");
-            sendGcode(`G1 ${axis}${dist} F${feedrate}`);
-            sendGcode("G90");
+            if (axis && moveVal) {
+                sendGcode("G91");
+                sendGcode(`G1 ${axis}${moveVal} F3000`);
+                sendGcode("G90");
+            }
         });
     });
 
-    // Matched to id="saveLocationBtn" in index.html
+    // Save Point Button Handler
     const saveButton = document.getElementById("saveLocationBtn");
     if (saveButton) {
         saveButton.addEventListener("click", () => {
-            // Matched to id="macroName" and id="locationName" in index.html
-            const macroName = document.getElementById("macroName")?.value || "TEST_MACRO";
+            const macroName = document.getElementById("macroName")?.value || "TOOL_PATH";
             const locationName = document.getElementById("locationName")?.value || "PT1";
-
             savePendantPoint(macroName, locationName, currentPosition.x, currentPosition.y, currentPosition.z);
         });
-    } else {
-        console.warn("Could not find saveLocationBtn element!");
     }
+
+    // Refresh Macros Button
+    const refreshBtn = document.getElementById("refreshMacrosBtn");
+    if (refreshBtn) {
+        refreshBtn.addEventListener("click", () => loadMacrosList());
+    }
+
+    // Console Side Toggle Button
+    const consoleToggleBtn = document.getElementById("consoleToggleBtn");
+    const pendantWrapper = document.getElementById("pendantWrapper");
+    if (consoleToggleBtn && pendantWrapper) {
+        consoleToggleBtn.addEventListener("click", () => {
+            // Swap flex order or toggle side class
+            const consoleCol = document.getElementById("consoleColumn");
+            if (consoleCol) {
+                const currentOrder = window.getComputedStyle(consoleCol).order;
+                consoleCol.style.order = currentOrder === "1" ? "3" : "1";
+                logToConsole("Toggled execution log position.");
+            }
+        });
+    }
+
+    // Joystick vs Buttons Mode Toggle (Radio Buttons)
+    document.querySelectorAll('input[name="xyMode"]').forEach(radio => {
+        radio.addEventListener("change", (e) => {
+            const mode = e.target.value;
+            const xyButtons = document.getElementById("xyButtons");
+            const joystickOuter = document.getElementById("xyJoystickOuter");
+
+            if (mode === "joystick") {
+                if (xyButtons) xyButtons.style.display = "none";
+                if (joystickOuter) joystickOuter.classList.remove("disabled");
+                logToConsole("Switched to Joystick mode.");
+            } else {
+                if (xyButtons) xyButtons.style.display = "flex";
+                if (joystickOuter) joystickOuter.classList.add("disabled");
+                logToConsole("Switched to Button mode.");
+            }
+        });
+    });
 }
 
 function updateUICoordinates() {
-    const xEl = document.getElementById("pos-x");
-    const yEl = document.getElementById("pos-y");
-    const zEl = document.getElementById("pos-z");
-
     const vx = document.getElementById("valX");
     const vy = document.getElementById("valY");
     const vz = document.getElementById("valZ");
-
-    if (xEl) xEl.innerText = currentPosition.x;
-    if (yEl) yEl.innerText = currentPosition.y;
-    if (zEl) zEl.innerText = currentPosition.z;
 
     if (vx) vx.innerText = currentPosition.x;
     if (vy) vy.innerText = currentPosition.y;
@@ -137,10 +194,7 @@ async function loadMacrosList() {
 
     try {
         const response = await fetch(`${API_BASE}/server/files/config/${filename}?${Date.now()}`);
-        if (!response.ok) {
-            console.warn(`Could not read ${filename}: ${response.statusText}`);
-            return;
-        }
+        if (!response.ok) return;
 
         const text = await response.text();
         const macroRegex = /\[gcode_macro\s+([a-zA-Z0-9_-]+)\]/gi;
@@ -189,7 +243,7 @@ async function savePendantPoint(macroName, locationName, x, y, z) {
                 currentContent = await response.text();
             }
         } catch (e) {
-            console.log("Creating fresh config file content.");
+            logToConsole("Creating fresh config file content.");
         }
 
         const cleanMacroName = macroName.replace(/[^a-zA-Z0-9_]/g, "_");
@@ -208,7 +262,7 @@ async function savePendantPoint(macroName, locationName, x, y, z) {
         const blob = new Blob([updatedContent], { type: "text/plain" });
         formData.append("file", blob, filename);
         formData.append("root", "config");
-        formData.append("path", filename); // Required for Moonraker file updates
+        formData.append("path", filename);
 
         const uploadResponse = await fetch(`${API_BASE}/server/files/upload`, {
             method: "POST",
@@ -216,18 +270,18 @@ async function savePendantPoint(macroName, locationName, x, y, z) {
         });
 
         if (uploadResponse.ok) {
-            console.log(`Saved macro [${macroIdentifier}] to ${filename}`);
+            logToConsole(`Successfully saved macro [${macroIdentifier}] to ${filename}`);
             alert(`Saved point: ${macroIdentifier}`);
 
             await loadMacrosList();
             await fetch(`${API_BASE}/printer/gcode/script?script=RESTART`, { method: "POST" });
         } else {
             const errText = await uploadResponse.text();
-            console.error("Upload error:", errText);
+            logToConsole(`Upload error: ${errText}`);
             alert(`Failed to save: ${uploadResponse.statusText}`);
         }
     } catch (err) {
-        console.error("Save error:", err);
+        logToConsole(`Save error: ${err.message}`);
         alert(`Error saving point: ${err.message}`);
     }
 }
