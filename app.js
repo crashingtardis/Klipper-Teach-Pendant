@@ -95,7 +95,7 @@ function setupEventListeners() {
         });
     });
 
-    // Save Point Button Listener - Using your EXACT HTML ID
+    // Save Point Button Listener
     const saveBtn = document.getElementById("saveLocationBtn");
     if (saveBtn) {
         saveBtn.addEventListener("click", () => triggerSaveFromUI());
@@ -111,13 +111,11 @@ function setupEventListeners() {
 }
 
 function triggerSaveFromUI() {
-    // Using your EXACT HTML IDs
     const macroName = document.getElementById("macroName")?.value || "PICK";
     const locationName = document.getElementById("locationName")?.value || "PT1";
     savePendantPoint(macroName, locationName, currentPosition.x, currentPosition.y, currentPosition.z);
 }
 
-// Legacy alias in case anything else tries to call saveLocation directly
 window.saveLocation = function (macroName, locationName, x, y, z) {
     const mName = macroName || document.getElementById("macroName")?.value || "PICK";
     const lName = locationName || document.getElementById("locationName")?.value || "PT1";
@@ -133,7 +131,6 @@ function updateUICoordinates() {
     const yEl = document.getElementById("pos-y");
     const zEl = document.getElementById("pos-z");
 
-    // Note: If your HTML uses valX, valY, valZ instead, updating those too
     const vx = document.getElementById("valX");
     const vy = document.getElementById("valY");
     const vz = document.getElementById("valZ");
@@ -152,7 +149,7 @@ function updateUICoordinates() {
 // ==============================================================================
 async function loadMacrosList() {
     const filename = "teach_pendant.cfg";
-    const macroContainer = document.getElementById("macroSelect"); // Using your EXACT HTML ID
+    const macroContainer = document.getElementById("macroSelect");
 
     try {
         const response = await fetch(`${API_BASE}/server/files/config/${filename}?cachebust=${Date.now()}`);
@@ -174,7 +171,6 @@ async function loadMacrosList() {
                 return;
             }
 
-            // Keep the default "Select Macro" option
             const defaultOpt = document.createElement("option");
             defaultOpt.value = "";
             defaultOpt.textContent = "-- Select Macro --";
@@ -200,7 +196,6 @@ async function savePendantPoint(macroName, locationName, x, y, z) {
     console.log(`[TeachPendant] Saving: ${macroName}_${locationName} at X:${x} Y:${y} Z:${z}`);
 
     try {
-        // Step 1: Read existing content
         let currentContent = "";
         try {
             const response = await fetch(`${API_BASE}/server/files/config/${filename}?cachebust=${Date.now()}`);
@@ -211,7 +206,6 @@ async function savePendantPoint(macroName, locationName, x, y, z) {
             console.log("[TeachPendant] Starting fresh file content.");
         }
 
-        // Step 2: Format G-Code Macro
         const cleanMacro = macroName.replace(/[^a-zA-Z0-9_]/g, "_").toUpperCase();
         const cleanLocation = locationName.replace(/[^a-zA-Z0-9_]/g, "_").toUpperCase();
         const macroIdentifier = `${cleanMacro}_${cleanLocation}`;
@@ -224,11 +218,11 @@ async function savePendantPoint(macroName, locationName, x, y, z) {
 
         const updatedContent = currentContent + newMacro;
 
-        // Step 3: Upload via Moonraker API
         const formData = new FormData();
         const blob = new Blob([updatedContent], { type: "text/plain" });
         formData.append("file", blob, filename);
         formData.append("root", "config");
+        formData.append("path", filename); // <-- THIS WAS MISSING AND CAUSING REJECTION
 
         const uploadResponse = await fetch(`${API_BASE}/server/files/upload`, {
             method: "POST",
@@ -238,7 +232,6 @@ async function savePendantPoint(macroName, locationName, x, y, z) {
         if (uploadResponse.ok) {
             console.log(`[TeachPendant] Successfully saved [${macroIdentifier}] to ${filename}`);
 
-            // Log to the on-screen console if it exists
             const consoleLine = document.createElement("div");
             consoleLine.className = "console-line";
             consoleLine.innerText = `Saved point: ${macroIdentifier}`;
