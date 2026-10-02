@@ -10,7 +10,8 @@ let motorsEnabled = false;
 // Jogging & Motion Configuration
 let jogSteps = [0.1, 0.5, 1, 5, 10, 25];
 let currentStep = 1;
-const feedrate = 3000;
+const feedrate = 3000; // legacy fallback, not used directly
+let feedrateMmS = 50;  // User-configurable feed rate in mm/s (converted to mm/min for G-code)
 let invertAxes = false;
 let swapAxes = false;
 let joystickCmdsPerSec = 1.0;
@@ -306,8 +307,9 @@ function jog(axis, direction) {
     }
 
     const distance = (currentStep * dir).toFixed(3).replace(/\.?0+$/, "");
+    const fVal = Math.round(feedrateMmS * 60);
     sendGcode("G91");
-    sendGcode(`G1 ${targetAxis}${distance} F${feedrate}`);
+    sendGcode(`G1 ${targetAxis}${distance} F${fVal}`);
     sendGcode("G90");
 
     logToConsole(`Jog ${targetAxis}: ${dir > 0 ? "+" : ""}${distance}mm`);
@@ -335,8 +337,9 @@ function jogVector(xDir, yDir) {
     if (finalY !== 0) moveParts.push(`Y${(currentStep * finalY).toFixed(3).replace(/\.?0+$/, "")}`);
     if (moveParts.length === 0) return;
 
+    const fVal = Math.round(feedrateMmS * 60);
     sendGcode("G91");
-    sendGcode(`G1 ${moveParts.join(" ")} F${feedrate}`);
+    sendGcode(`G1 ${moveParts.join(" ")} F${fVal}`);
     sendGcode("G90");
 
     logToConsole(`Joystick Move: ${moveParts.join(", ")}`);
@@ -494,6 +497,8 @@ function openSettings() {
 
     const rateInput = document.getElementById("joystickRateInput");
     if (rateInput) rateInput.value = joystickCmdsPerSec;
+    const feedrateInp = document.getElementById("feedrateInput");
+    if (feedrateInp) feedrateInp.value = feedrateMmS;
     const fileInput = document.getElementById("macroFileInput");
     if (fileInput) fileInput.value = defaultMacroFile;
     const patternInput = document.getElementById("namePatternInput");
@@ -533,6 +538,11 @@ function applySettings() {
     const rateInp = parseFloat(document.getElementById("joystickRateInput")?.value);
     if (!isNaN(rateInp) && rateInp > 0) {
         joystickCmdsPerSec = rateInp;
+    }
+
+    const frInp = parseFloat(document.getElementById("feedrateInput")?.value);
+    if (!isNaN(frInp) && frInp > 0) {
+        feedrateMmS = frInp;
     }
 
     const fileInp = document.getElementById("macroFileInput")?.value.trim();
@@ -790,12 +800,11 @@ function highlightConsoleLine(macroName, index) {
 async function savePendantPoint() {
     const macroNameField = document.getElementById("macroName");
     const locationNameField = document.getElementById("locationName");
-    const coordModeField = document.getElementById("coordMode");
 
     const macroName = (macroNameField?.value || "TOOL_PATH").trim();
     const locationName = (locationNameField?.value || "PT1").trim();
-    const coordMode = coordModeField?.value || "ABSOLUTE";
-    const modeCmd = coordMode === "ABSOLUTE" ? "G90" : "G91";
+    // Always use absolute coordinates (G90)
+    const modeCmd = "G90";
 
     if (!macroName || !locationName) {
         alert("Please provide both an overall Macro Name and a Location Name.");
@@ -814,7 +823,8 @@ async function savePendantPoint() {
             logToConsole("Initializing new configuration file content.");
         }
 
-        const pointCode = `    # Location: ${cleanLocation}\n    ${modeCmd}\n    G1 X${currentPosition.x} Y${currentPosition.y} Z${currentPosition.z} F3000\n`;
+        const fVal = Math.round(feedrateMmS * 60);
+        const pointCode = `    # Location: ${cleanLocation}\n    ${modeCmd}\n    G1 X${currentPosition.x} Y${currentPosition.y} Z${currentPosition.z} F${fVal}\n`;
         let updatedContent = "";
 
         const macroHeader = `[gcode_macro ${cleanMacro}]`;
@@ -912,10 +922,10 @@ async function touchUpLocation() {
     }
 
     const locationName = activePt.location;
-    const coordMode = document.getElementById("coordMode")?.value || "ABSOLUTE";
-    const modeCmd = coordMode === "ABSOLUTE" ? "G90" : "G91";
-    const newGcode = `G1 X${currentPosition.x} Y${currentPosition.y} Z${currentPosition.z} F3000`;
-
+    // Always use absolute coordinates (G90)
+    const modeCmd = "G90";
+    const fVal = Math.round(feedrateMmS * 60);
+    const newGcode = `G1 X${currentPosition.x} Y${currentPosition.y} Z${currentPosition.z} F${fVal}`;
     try {
         const response = await fetch(`${API_BASE}/server/files/config/${defaultMacroFile}?${Date.now()}`);
         if (!response.ok) throw new Error("Could not fetch configuration file");

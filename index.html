@@ -60,6 +60,12 @@
                             <div class="settings-section-title">Jog Distances (mm)</div>
                             <div class="settings-grid" id="settingsGrid"></div>
 
+                            <div class="settings-section-title">Motion</div>
+                            <div class="settings-row-single">
+                                <span>Feed Rate (mm/s):</span>
+                                <input type="number" id="feedrateInput" min="1" max="500" step="1" value="50">
+                            </div>
+
                             <div class="settings-section-title">Joystick & Naming</div>
                             <div class="settings-row-single">
                                 <span>Joystick Rate (cmds/sec):</span>
@@ -124,7 +130,6 @@
                             <div class="save-grid">
                                 <input type="text" id="macroName" class="macro-name-input" placeholder="Overall Macro Name (e.g. TOOL_PATH)">
                                 <input type="text" id="locationName" placeholder="Location Name">
-                                <select id="coordMode"><option value="ABSOLUTE">Absolute (G90)</option><option value="RELATIVE">Relative (G91)</option></select>
                             </div>
                             <button class="btn-action" id="saveLocationBtn">Save Point to Macro</button>
                         </div>
@@ -191,6 +196,6 @@
         </div>
     </div>
 
-    <script src="app.js?v=2"></script>
+    <script src="app.js?v=3"></script>
 </body>
 </html>
