@@ -214,7 +214,7 @@ function updateMotorState(isEnabled) {
                 badge.textContent = `Homed: ${homedAxes.toUpperCase()}`;
                 badge.classList.add("active");
             }
-            logToConsole(`Motors Enabled (Homed: ${homedAxes.toUpperCase()}).`);
+            logToConsole(`Teach Pendant Enabled (Homed: ${homedAxes.toUpperCase()}).`);
         }
     } else {
         if (joystickOuter) joystickOuter.classList.add("disabled");
@@ -222,8 +222,8 @@ function updateMotorState(isEnabled) {
             badge.textContent = "Motors Disabled";
             badge.classList.remove("active");
         }
-        sendGcode("M84"); // Stepper motors unpowered
-        logToConsole("Motors Disabled / Steppers Unpowered (M84).");
+        //sendGcode("M84"); // Stepper motors unpowered
+        logToConsole("Teach Pendant Disabled.");
     }
 }
 
