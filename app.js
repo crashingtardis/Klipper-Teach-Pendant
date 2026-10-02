@@ -47,7 +47,7 @@ function initWebSocket() {
                 currentPosition.x = pos[0].toFixed(2);
                 currentPosition.y = pos[1].toFixed(2);
                 currentPosition.z = pos[2].toFixed(2);
-                updateUI координат();
+                updateUICoordinates();
             }
         }
     };
@@ -110,7 +110,7 @@ function setupEventListeners() {
     }
 }
 
-function updateUI координат() {
+function updateUICoordinates() {
     const xEl = document.getElementById("pos-x");
     const yEl = document.getElementById("pos-y");
     const zEl = document.getElementById("pos-z");
