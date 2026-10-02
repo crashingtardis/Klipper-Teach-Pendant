@@ -129,7 +129,8 @@ async function loadMacrosList() {
     const macroContainer = document.getElementById("macro-list");
 
     try {
-        const response = await fetch(`${API_BASE}/server/files/config/${filename}?cachebust=${Date.now()}`);
+        // Fetch teach_pendant.cfg directly using Moonraker REST API
+        const response = await fetch(`/server/files/config/${filename}?cachebust=${Date.now()}`);
         if (!response.ok) {
             console.warn(`[TeachPendant] Could not read ${filename}: ${response.statusText}`);
             return;
@@ -168,60 +169,56 @@ async function loadMacrosList() {
 // ==============================================================================
 // 5. Writing Points and Macros to teach_pendant.cfg
 // ==============================================================================
-async function savePendantPoint(macroName, locationName, x, y, z) {
+async function saveLocation(macroName, locationName, x, y, z) {
     const filename = "teach_pendant.cfg";
-    console.log(`[TeachPendant] Attempting to save point: Macro=${macroName}, Location=${locationName}, Pos=(${x}, ${y}, ${z})`);
 
     try {
-        // Step 1: Read existing contents
+        // Read existing contents via REST
         let currentContent = "";
         try {
-            const response = await fetch(`${API_BASE}/server/files/config/${filename}?cachebust=${Date.now()}`);
+            const response = await fetch(`/server/files/config/${filename}?cachebust=${Date.now()}`);
             if (response.ok) {
                 currentContent = await response.text();
-                console.log("[TeachPendant] Successfully fetched existing config content.");
             }
         } catch (e) {
-            console.log("[TeachPendant] File read failed, starting fresh file content.");
+            console.log("[TeachPendant] Creating fresh config content.");
         }
 
-        // Step 2: Format new macro block
-        const cleanMacroName = macroName.replace(/[^a-zA-Z0-9_]/g, "_");
-        const cleanLocationName = locationName.replace(/[^a-zA-Z0-9_]/g, "_");
-        const macroIdentifier = `${cleanMacroName}_${cleanLocationName}`.toUpperCase();
+        // Format macro name and block
+        const cleanMacro = (macroName || "MACRO").replace(/[^a-zA-Z0-9_]/g, "_");
+        const cleanPoint = (locationName || "PT1").replace(/[^a-zA-Z0-9_]/g, "_");
+        const macroIdentifier = `${cleanMacro}_${cleanPoint}`.toUpperCase();
 
         const newMacro = `\n[gcode_macro ${macroIdentifier}]\n` +
-                         `gcode:\n` +
-                         `    # Position: X=${x}, Y=${y}, Z=${z}\n` +
-                         `    G90\n` +
-                         `    G1 X${x} Y${y} Z${z} F3000\n`;
+            `gcode:\n` +
+            `    # Position: X=${x}, Y=${y}, Z=${z}\n` +
+            `    G90\n` +
+            `    G1 X${x} Y${y} Z${z} F3000\n`;
 
         const updatedContent = currentContent + newMacro;
 
-        // Step 3: Post via FormData to Moonraker API
+        // Upload updated file to Moonraker
         const formData = new FormData();
         const blob = new Blob([updatedContent], { type: "text/plain" });
         formData.append("file", blob, filename);
         formData.append("root", "config");
 
-        console.log("[TeachPendant] Sending upload request to /server/files/upload...");
-
-        const uploadResponse = await fetch(`${API_BASE}/server/files/upload`, {
+        const uploadResponse = await fetch(`/server/files/upload`, {
             method: "POST",
             body: formData
         });
 
         if (uploadResponse.ok) {
-            console.log(`[TeachPendant] Upload successful! Wrote ${macroIdentifier}`);
+            console.log(`[TeachPendant] Wrote ${macroIdentifier} to ${filename}`);
             alert(`Saved point: ${macroIdentifier}`);
 
-            // Refresh macro list and trigger Klipper restart
+            // Reload macro list and restart Klipper
             await loadMacrosList();
-            await fetch(`${API_BASE}/printer/gcode/script?script=RESTART`, { method: "POST" });
+            await fetch(`/printer/gcode/script?script=RESTART`, { method: "POST" });
         } else {
             const errText = await uploadResponse.text();
-            console.error("[TeachPendant] Upload API Error:", uploadResponse.status, errText);
-            alert(`Upload failed (${uploadResponse.status}): ${errText}`);
+            console.error("[TeachPendant] Upload failed:", errText);
+            alert(`Failed to save: ${uploadResponse.statusText}`);
         }
     } catch (err) {
         console.error("[TeachPendant] Save error:", err);
