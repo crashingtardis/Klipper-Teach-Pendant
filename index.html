@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Klipper Teach Pendant</title>
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -134,7 +134,7 @@
                                 <span>Macro Playback / Step-Through</span>
                                 <button style="background:none; border:none; cursor:pointer;" id="refreshMacrosBtn" title="Refresh Macros">🔄</button>
                             </div>
-                            <div class="playback-grid" style="grid-template-columns: 1fr auto auto auto;">
+                            <div class="playback-grid">
                                 <select id="macroSelect"><option value="">-- Select Macro --</option></select>
                                 <button class="home-btn" id="runContinuousBtn" style="background:#00c853; color:#000; font-weight:700;">Run</button>
                                 <button class="home-btn btn-step" id="stepPrevBtn" style="background:#ffb74d; color:#000; font-weight:700;">Prev</button>
@@ -173,7 +173,7 @@
                     </div>
 
                     <div class="z-divider"></div>
-                    <div class="jog-group">
+                    <div class="jog-group z-jog-group">
                         <div class="jog-label">Z AXIS</div>
                         <button class="hw-jog-btn" data-axis="Z" data-dir="1" disabled><span class="axis-letter">Z</span>+</button>
                         <button class="hw-jog-btn" data-axis="Z" data-dir="-1" disabled><span class="axis-letter">Z</span>-</button>

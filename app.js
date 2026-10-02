@@ -45,6 +45,8 @@ function initUI() {
     updateLocationField();
     updateJoystickLabels();
     updateMotorState(false);
+    updateResponsiveLayoutState();
+    window.addEventListener("resize", updateResponsiveLayoutState);
 }
 
 // ==============================================================================
@@ -179,10 +181,33 @@ function logToConsole(message, lineId = null, isActiveTarget = false) {
 
 function toggleConsoleSide() {
     const consoleCol = document.getElementById("consoleColumn");
-    if (consoleCol) {
+    if (!consoleCol) return;
+
+    if (window.innerWidth <= 860) {
+        consoleCol.classList.toggle("collapsed");
+        const isCollapsed = consoleCol.classList.contains("collapsed");
+        const btn = document.getElementById("consoleToggleBtn");
+        if (btn) btn.innerText = isCollapsed ? "▲ Show Log" : "▼ Hide Log";
+        logToConsole(isCollapsed ? "Execution log minimized." : "Execution log expanded.");
+    } else {
         const currentOrder = window.getComputedStyle(consoleCol).order;
         consoleCol.style.order = currentOrder === "1" ? "3" : "1";
         logToConsole("Toggled execution log position.");
+    }
+}
+
+function updateResponsiveLayoutState() {
+    const btn = document.getElementById("consoleToggleBtn");
+    const consoleCol = document.getElementById("consoleColumn");
+    if (!btn || !consoleCol) return;
+
+    if (window.innerWidth <= 860) {
+        const isCollapsed = consoleCol.classList.contains("collapsed");
+        btn.innerText = isCollapsed ? "▲ Show Log" : "▼ Hide Log";
+        btn.title = isCollapsed ? "Expand Execution Log" : "Collapse Execution Log";
+    } else {
+        btn.innerText = "⇄ Side";
+        btn.title = "Switch Side";
     }
 }
 

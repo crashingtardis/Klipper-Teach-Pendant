@@ -1,4 +1,4 @@
-﻿:root {
+:root {
     --casing-bg: linear-gradient(135deg, #2b2f38 0%, #16181d 100%);
     --casing-border: #0a0b0d;
     --screen-bg: linear-gradient(180deg, #10141b 0%, #06080b 100%);
@@ -39,28 +39,43 @@ body.light-mode {
     --bezel-text: #1a1d22;
 }
 
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
 body {
     margin: 0;
-    padding: 20px;
+    padding: 16px;
     background-color: #07080a;
-    font-family: "Segoe UI", Roboto, Helvetica, sans-serif;
+    font-family: "Segoe UI", Roboto, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif;
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
+    min-height: 100dvh;
     user-select: none;
     transition: background-color 0.3s;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .pendant-wrapper {
     display: flex;
-    gap: 20px;
-    align-items: flex-start;
+    gap: 16px;
+    align-items: stretch;
+    justify-content: center;
+    width: 100%;
+    max-width: 1080px;
+    min-width: 0;
+    transition: all 0.3s ease;
 }
 
 .console-column {
-    width: 260px;
-    height: 640px;
+    width: 280px;
+    flex: 0 0 280px;
+    min-width: 0;
+    min-height: 580px;
+    max-height: min(720px, calc(100dvh - 32px));
     background: var(--hw-col-bg);
     border: 3px solid var(--casing-border);
     border-radius: 16px;
@@ -69,6 +84,7 @@ body {
     overflow: hidden;
     box-shadow: 0 20px 40px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.2);
     order: 1;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .pendant-casing {
@@ -76,11 +92,14 @@ body {
     border: 3px solid var(--casing-border);
     border-radius: 20px;
     box-shadow: 0 25px 50px rgba(0,0,0,0.9), inset 0 1px 3px rgba(255,255,255,0.25), inset 0 -3px 6px rgba(0,0,0,0.8);
-    width: 720px;
-    padding: 22px;
+    flex: 1 1 660px;
+    max-width: 740px;
+    min-width: 0;
+    width: 100%;
+    padding: 20px;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 16px;
     transition: background 0.3s, border-color 0.3s;
     order: 2;
 }
@@ -91,11 +110,12 @@ body {
     font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: 1px;
-    padding: 12px 15px;
+    padding: 12px 14px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid rgba(255,255,255,0.08);
+    flex-shrink: 0;
 }
 
 .console-body {
@@ -110,6 +130,7 @@ body {
     flex-direction: column;
     gap: 6px;
     box-shadow: inset 0 0 12px rgba(0,0,0,0.9);
+    -webkit-overflow-scrolling: touch;
 }
 
 .console-line {
@@ -119,62 +140,69 @@ body {
     word-break: break-all;
 }
 
-    .console-line.active-target {
-        background-color: rgba(0, 255, 136, 0.15);
-        color: #00ffaa;
-        border-left: 3px solid #00ff88;
-        font-weight: bold;
-    }
+.console-line.active-target {
+    background-color: rgba(0, 255, 136, 0.15);
+    color: #00ffaa;
+    border-left: 3px solid #00ff88;
+    font-weight: bold;
+}
 
 .console-toggle-btn {
-    background: none;
-    border: none;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 4px;
     color: #a5b4fc;
     cursor: pointer;
     font-size: 0.75rem;
     font-weight: 600;
+    padding: 4px 8px;
+    transition: all 0.2s ease;
 }
 
-    .console-toggle-btn:hover {
-        color: #fff;
-    }
+.console-toggle-btn:hover {
+    color: #fff;
+    background: rgba(255,255,255,0.15);
+}
 
 .top-bezel {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-right: 10px;
-    padding-left: 5px;
+    padding: 0 4px;
 }
 
 .bezel-left-group {
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 12px;
 }
 
 .bezel-right-group {
     display: flex;
     align-items: center;
-    gap: 35px;
+    gap: 24px;
 }
 
 .klipper-logo {
-    height: 44px;
+    height: 42px;
     width: auto;
+    max-width: 160px;
     object-fit: contain;
     filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6)) brightness(1.2);
 }
 
 .main-body-row {
     display: flex;
-    gap: 20px;
+    gap: 16px;
+    min-width: 0;
+    align-items: stretch;
 }
 
+/* E-Stop Assembly */
 .estop-container {
     position: relative;
-    width: 105px;
-    height: 105px;
+    width: 102px;
+    height: 102px;
     background: radial-gradient(circle, #ffe082 0%, #fbc02d 70%, #c68400 100%);
     border-radius: 50%;
     display: flex;
@@ -182,6 +210,7 @@ body {
     justify-content: center;
     box-shadow: inset 0 2px 6px rgba(255,255,255,0.6), inset 0 -4px 8px rgba(0,0,0,0.5), 0 6px 12px rgba(0,0,0,0.7);
     border: 2px solid #b78103;
+    flex-shrink: 0;
 }
 
 .estop-text-svg {
@@ -198,26 +227,27 @@ body {
     background: var(--estop-red);
     border: none;
     border-radius: 50%;
-    width: 62px;
-    height: 62px;
+    width: 60px;
+    height: 60px;
     box-shadow: 0 6px 0 var(--estop-red-dark), 0 10px 15px rgba(0,0,0,0.7), inset 0 2px 4px rgba(255,255,255,0.4);
     cursor: pointer;
     position: relative;
     z-index: 2;
+    transition: transform 0.05s ease, box-shadow 0.05s ease;
 }
 
-    .estop-btn:active {
-        transform: translateY(6px);
-        box-shadow: 0 0 0 var(--estop-red-dark), inset 0 2px 4px rgba(0,0,0,0.4);
-    }
+.estop-btn:active {
+    transform: translateY(6px);
+    box-shadow: 0 0 0 var(--estop-red-dark), inset 0 2px 4px rgba(0,0,0,0.4);
+}
 
 .estop-arrows {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 35px;
-    height: 35px;
+    width: 32px;
+    height: 32px;
     opacity: 0.35;
     pointer-events: none;
 }
@@ -231,11 +261,12 @@ body {
     color: var(--bezel-text);
     font-size: 0.75rem;
     font-weight: bold;
+    flex-shrink: 0;
 }
 
 .keyswitch-base {
-    width: 55px;
-    height: 55px;
+    width: 54px;
+    height: 54px;
     background: radial-gradient(circle, #25282d 0%, #121417 100%);
     border: 2px solid #555;
     border-radius: 50%;
@@ -249,8 +280,8 @@ body {
 }
 
 .keyswitch-knob {
-    width: 38px;
-    height: 38px;
+    width: 36px;
+    height: 36px;
     background: linear-gradient(135deg, #5a6375, #1a1d22);
     border-radius: 50%;
     transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
@@ -259,41 +290,40 @@ body {
     box-shadow: 0 2px 5px rgba(0,0,0,0.6), inset 0 1px 2px rgba(255,255,255,0.3);
 }
 
-    .keyswitch-knob::after {
-        content: '';
-        position: absolute;
-        top: 3px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 3px;
-        height: 14px;
-        background-color: #ff5252;
-        border-radius: 2px;
-        transition: background-color 0.4s ease;
-    }
+.keyswitch-knob::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 3px;
+    height: 13px;
+    background-color: #ff5252;
+    border-radius: 2px;
+    transition: background-color 0.4s ease;
+}
 
 #motorToggle {
     display: none;
 }
 
-    /* Animated states triggered by checkbox */
-    #motorToggle:checked + .keyswitch-container .keyswitch-base {
-        background: radial-gradient(circle, #1b3b22 0%, #0d1e11 100%);
-        border-color: #2e7d32;
-    }
+#motorToggle:checked + .keyswitch-container .keyswitch-base {
+    background: radial-gradient(circle, #1b3b22 0%, #0d1e11 100%);
+    border-color: #2e7d32;
+}
 
-    #motorToggle:checked + .keyswitch-container .keyswitch-knob {
-        transform: rotate(45deg);
-    }
+#motorToggle:checked + .keyswitch-container .keyswitch-knob {
+    transform: rotate(45deg);
+}
 
-        #motorToggle:checked + .keyswitch-container .keyswitch-knob::after {
-            background-color: #00ff88;
-        }
+#motorToggle:checked + .keyswitch-container .keyswitch-knob::after {
+    background-color: #00ff88;
+}
 
 .keyswitch-labels {
     display: flex;
     justify-content: space-between;
-    width: 75px;
+    width: 72px;
     font-size: 0.7rem;
     font-weight: 800;
 }
@@ -325,15 +355,17 @@ body {
     margin-bottom: 2px;
 }
 
+/* Screen Area */
 .screen-area {
-    flex-grow: 1;
+    flex: 1 1 0;
+    min-width: 0;
     background: var(--screen-bg);
     border: 1px solid var(--screen-border);
     border-radius: 12px;
     padding: 16px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
     position: relative;
     box-shadow: inset 0 2px 10px rgba(0,0,0,0.9), 0 0 25px rgba(0, 229, 255, 0.06);
     transition: background 0.3s;
@@ -348,21 +380,27 @@ body {
     display: flex;
     justify-content: flex-end;
     align-items: center;
+    gap: 10px;
 }
 
 .settings-btn-icon {
     background: none;
     border: none;
-    font-size: 1.1rem;
+    font-size: 1.15rem;
     cursor: pointer;
     color: var(--text-main);
     opacity: 0.85;
-    transition: opacity 0.2s;
+    transition: opacity 0.2s, transform 0.2s ease;
+    padding: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
-    .settings-btn-icon:hover {
-        opacity: 1;
-    }
+.settings-btn-icon:hover {
+    opacity: 1;
+    transform: rotate(30deg);
+}
 
 .status-badge {
     font-size: 0.75rem;
@@ -373,12 +411,17 @@ body {
     color: white;
     letter-spacing: 0.5px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 220px;
 }
 
-    .status-badge.active {
-        background-color: #00c853;
-    }
+.status-badge.active {
+    background-color: #00c853;
+}
 
+/* Settings Overlay & Modal */
 .settings-overlay {
     position: absolute;
     top: 0;
@@ -400,20 +443,23 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.18);
     padding: 22px;
     border-radius: 12px;
-    width: 85%;
-    max-width: 350px;
+    width: 90%;
+    max-width: 380px;
+    max-height: 85vh;
+    overflow-y: auto;
     color: #fff;
     box-shadow: 0 20px 40px rgba(0,0,0,0.85);
+    -webkit-overflow-scrolling: touch;
 }
 
-    .settings-modal h3 {
-        margin-top: 0;
-        margin-bottom: 12px;
-        font-size: 1.1rem;
-        color: #fff;
-        border-bottom: 1px solid rgba(255,255,255,0.12);
-        padding-bottom: 6px;
-    }
+.settings-modal h3 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    font-size: 1.1rem;
+    color: #fff;
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+    padding-bottom: 6px;
+}
 
 .settings-section-title {
     font-size: 0.8rem;
@@ -455,33 +501,36 @@ body {
     margin-bottom: 10px;
     font-size: 0.85rem;
     color: #e5e7eb;
+    gap: 8px;
 }
 
-    .settings-row-single input[type="text"], .settings-row-single input[type="number"], .settings-row-single select {
-        width: 100px;
-        padding: 5px;
-        background: rgba(0,0,0,0.5);
-        border: 1px solid rgba(255,255,255,0.25);
-        border-radius: 4px;
-        color: #fff;
-        text-align: center;
-    }
+.settings-row-single input[type="text"],
+.settings-row-single input[type="number"],
+.settings-row-single select {
+    width: 110px;
+    padding: 6px;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 4px;
+    color: #fff;
+    text-align: center;
+}
 
 .settings-checkboxes {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
     margin-bottom: 15px;
     font-size: 0.85rem;
     color: #e5e7eb;
 }
 
-    .settings-checkboxes label {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        cursor: pointer;
-    }
+.settings-checkboxes label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
 
 .settings-actions {
     display: flex;
@@ -489,14 +538,14 @@ body {
     gap: 10px;
 }
 
-    .settings-actions button {
-        padding: 6px 14px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-weight: bold;
-        font-size: 0.85rem;
-    }
+.settings-actions button {
+    padding: 7px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.85rem;
+}
 
 .btn-cancel {
     background-color: #374151;
@@ -509,6 +558,7 @@ body {
     font-weight: 700;
 }
 
+/* LCD Coordinates Readout */
 .lcd-display {
     background-color: var(--lcd-bg);
     border: 1px solid rgba(0, 255, 136, 0.4);
@@ -517,6 +567,7 @@ body {
     display: flex;
     justify-content: space-between;
     box-shadow: inset 0 0 12px rgba(0,0,0,0.95), 0 0 12px rgba(0, 255, 136, 0.12);
+    gap: 8px;
 }
 
 .lcd-axis {
@@ -534,11 +585,12 @@ body {
 .lcd-value {
     color: var(--lcd-text);
     font-family: monospace;
-    font-size: 1.4rem;
+    font-size: clamp(1.15rem, 2.5vw, 1.4rem);
     font-weight: bold;
     text-shadow: 0 0 10px rgba(0, 255, 136, 0.6);
 }
 
+/* Homing Bar */
 .homing-bar {
     display: flex;
     align-items: center;
@@ -554,6 +606,7 @@ body {
     font-size: 0.75rem;
     color: var(--text-main);
     letter-spacing: 0.5px;
+    flex-shrink: 0;
 }
 
 .home-btn {
@@ -567,14 +620,21 @@ body {
     color: var(--text-main);
     box-shadow: 0 2px 4px rgba(0,0,0,0.4);
     transition: all 0.1s;
+    min-height: 36px;
 }
 
-    .home-btn:hover {
-        background-color: rgba(0, 229, 255, 0.25);
-        border-color: var(--accent);
-        color: var(--accent);
-    }
+.home-btn:hover {
+    background-color: rgba(0, 229, 255, 0.25);
+    border-color: var(--accent);
+    color: var(--accent);
+}
 
+.home-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+}
+
+/* Panels */
 .pendant-panels {
     display: flex;
     flex-direction: column;
@@ -598,6 +658,7 @@ body {
     margin-bottom: 6px;
     display: flex;
     justify-content: space-between;
+    align-items: center;
 }
 
 .save-grid {
@@ -606,16 +667,19 @@ body {
     gap: 8px;
 }
 
-    .save-grid input, .save-grid select, .playback-grid select {
-        padding: 6px 8px;
-        font-size: 0.85rem;
-        border: 1px solid rgba(255,255,255,0.2);
-        border-radius: 4px;
-        box-sizing: border-box;
-        width: 100%;
-        background: rgba(0,0,0,0.4);
-        color: var(--text-main);
-    }
+.save-grid input,
+.save-grid select,
+.playback-grid select {
+    padding: 7px 8px;
+    font-size: 0.85rem;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 4px;
+    box-sizing: border-box;
+    width: 100%;
+    background: rgba(0,0,0,0.4);
+    color: var(--text-main);
+    min-height: 36px;
+}
 
 .macro-name-input {
     grid-column: 1 / 3;
@@ -625,7 +689,7 @@ body {
     background-color: #00c853;
     color: #000;
     border: none;
-    padding: 8px;
+    padding: 9px;
     font-weight: 700;
     border-radius: 4px;
     cursor: pointer;
@@ -633,6 +697,12 @@ body {
     margin-top: 6px;
     font-size: 0.85rem;
     box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+    min-height: 40px;
+    transition: background-color 0.2s, transform 0.05s ease;
+}
+
+.btn-action:active {
+    transform: translateY(1px);
 }
 
 .playback-grid {
@@ -642,10 +712,13 @@ body {
     align-items: center;
 }
 
+/* Hardware Jog Column */
 .hardware-jog-column {
-    width: 175px;
+    width: 185px;
+    flex: 0 0 185px;
+    min-width: 0;
     background: var(--hw-col-bg);
-    padding: 15px;
+    padding: 14px;
     border-radius: 12px;
     display: flex;
     flex-direction: column;
@@ -726,9 +799,9 @@ body {
     z-index: 2;
 }
 
-    .joystick-stick-ui:active {
-        cursor: grabbing;
-    }
+.joystick-stick-ui:active {
+    cursor: grabbing;
+}
 
 .joystick-outer-wrap.disabled {
     opacity: 0.3;
@@ -785,17 +858,18 @@ body {
     justify-content: space-between;
     padding: 0 12px;
     align-items: center;
+    transition: transform 0.05s ease, box-shadow 0.05s ease;
 }
 
-    .hw-jog-btn:active:not(:disabled) {
-        transform: translateY(2px);
-        box-shadow: 0 1px 2px rgba(0,0,0,0.5);
-    }
+.hw-jog-btn:active:not(:disabled) {
+    transform: translateY(2px);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
 
-    .hw-jog-btn:disabled {
-        opacity: 0.3;
-        cursor: not-allowed;
-    }
+.hw-jog-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
 
 .axis-letter {
     color: var(--btn-hw-text);
@@ -831,28 +905,28 @@ body {
     justify-content: space-between;
 }
 
-    .ui-toggle label {
-        padding: 5px 6px;
-        cursor: pointer;
-        border-radius: 4px;
-        font-weight: bold;
-        font-size: 0.7rem;
-        color: var(--text-main);
-        text-align: center;
-        flex: 1;
-    }
+.ui-toggle label {
+    padding: 5px 6px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.7rem;
+    color: var(--text-main);
+    text-align: center;
+    flex: 1;
+}
 
-    .ui-toggle input[type="radio"] {
-        display: none;
-    }
+.ui-toggle input[type="radio"] {
+    display: none;
+}
 
-        .ui-toggle input[type="radio"]:checked + span {
-            background-color: var(--accent);
-            color: #000;
-            display: block;
-            border-radius: 4px;
-            font-weight: 700;
-        }
+.ui-toggle input[type="radio"]:checked + span {
+    background-color: var(--accent);
+    color: #000;
+    display: block;
+    border-radius: 4px;
+    font-weight: 700;
+}
 
 .step-selector {
     display: grid;
@@ -862,7 +936,7 @@ body {
 }
 
 .step-btn {
-    padding: 5px 2px;
+    padding: 6px 2px;
     font-size: 0.75rem;
     background: var(--btn-hw-bg);
     border: 1px solid rgba(255,255,255,0.2);
@@ -872,11 +946,389 @@ body {
     color: var(--text-main);
     box-shadow: 0 2px 3px rgba(0,0,0,0.4);
     text-align: center;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.1s ease;
 }
 
-    .step-btn.active {
-        background-color: var(--accent);
-        color: #000;
-        border-color: var(--accent);
-        font-weight: 700;
+.step-btn.active {
+    background-color: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+    font-weight: 700;
+}
+
+/* ==============================================================================
+   RESPONSIVE DESIGN (Desktop, Tablet, Mobile)
+   ============================================================================== */
+
+/* --- Tablet Landscape / Small Desktop (max-width: 980px) --- */
+@media (max-width: 980px) {
+    .pendant-wrapper {
+        gap: 12px;
+        max-width: 100%;
     }
+    .console-column {
+        width: 240px;
+        flex: 0 0 240px;
+    }
+    .pendant-casing {
+        padding: 16px;
+    }
+    .hardware-jog-column {
+        width: 170px;
+        flex: 0 0 170px;
+    }
+    .bezel-right-group {
+        gap: 18px;
+    }
+}
+
+/* --- Tablet Portrait / Hybrid (max-width: 860px) --- */
+@media (max-width: 860px) {
+    body {
+        align-items: flex-start;
+        padding: 12px 10px;
+    }
+
+    .pendant-wrapper {
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        max-width: 720px;
+        gap: 14px;
+    }
+
+    .pendant-casing {
+        order: 1 !important;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .console-column {
+        order: 2 !important;
+        width: 100%;
+        flex: none;
+        min-height: auto;
+        max-height: 240px;
+        border-radius: 14px;
+    }
+
+    .console-column.collapsed {
+        max-height: 44px;
+    }
+
+    .console-column.collapsed .console-body {
+        display: none;
+    }
+
+    .playback-grid {
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 6px;
+    }
+
+    #macroSelect {
+        grid-column: 1 / -1;
+    }
+}
+
+/* --- Mobile Devices (max-width: 640px) --- */
+@media (max-width: 640px) {
+    body {
+        padding: 6px 4px;
+        min-height: 100dvh;
+    }
+
+    .pendant-wrapper {
+        gap: 10px;
+        max-width: 100%;
+    }
+
+    .pendant-casing {
+        padding: 12px 10px;
+        border-radius: 14px;
+        border-width: 2px;
+        gap: 12px;
+    }
+
+    /* Top Bezel Scaling */
+    .top-bezel {
+        padding: 0 2px;
+    }
+
+    .bezel-left-group {
+        gap: 8px;
+    }
+
+    .klipper-logo {
+        height: 32px;
+        max-width: 110px;
+    }
+
+    .bezel-right-group {
+        gap: 12px;
+    }
+
+    .keyswitch-container {
+        gap: 2px;
+    }
+
+    .keyswitch-labels {
+        width: 60px;
+        font-size: 0.65rem;
+    }
+
+    .keyswitch-base {
+        width: 44px;
+        height: 44px;
+    }
+
+    .keyswitch-knob {
+        width: 30px;
+        height: 30px;
+    }
+
+    .keyswitch-knob::after {
+        height: 11px;
+        width: 2.5px;
+    }
+
+    .estop-container {
+        width: 78px;
+        height: 78px;
+    }
+
+    .estop-btn {
+        width: 48px;
+        height: 48px;
+    }
+
+    .estop-arrows {
+        width: 26px;
+        height: 26px;
+    }
+
+    /* Main Stack: Screen Area on top, Jog Controls below */
+    .main-body-row {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .screen-area {
+        padding: 12px 10px;
+        border-radius: 10px;
+        gap: 10px;
+    }
+
+    /* Responsive LCD */
+    .lcd-display {
+        padding: 8px 10px;
+        gap: 6px;
+    }
+
+    .lcd-axis {
+        flex: 1 1 0;
+        justify-content: center;
+        gap: 4px;
+    }
+
+    .lcd-label {
+        font-size: 0.75rem;
+    }
+
+    .lcd-value {
+        font-size: clamp(1.1rem, 5.2vw, 1.35rem);
+    }
+
+    /* Responsive Homing Bar */
+    .homing-bar {
+        flex-wrap: wrap;
+        gap: 5px;
+        padding: 6px;
+    }
+
+    .homing-label {
+        width: 100%;
+        font-size: 0.7rem;
+        margin-bottom: 2px;
+    }
+
+    .home-btn {
+        flex: 1 1 calc(20% - 5px);
+        min-height: 38px;
+        padding: 6px 2px;
+        font-size: 0.75rem;
+        text-align: center;
+    }
+
+    /* Touch-Friendly Panels */
+    .panel-box {
+        padding: 10px;
+    }
+
+    .save-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+    }
+
+    .macro-name-input {
+        grid-column: 1 / 3;
+        font-size: 0.85rem;
+    }
+
+    .playback-grid {
+        grid-template-columns: 1.2fr 1fr 1fr;
+        gap: 6px;
+    }
+
+    #macroSelect {
+        grid-column: 1 / -1;
+        width: 100%;
+        min-height: 40px;
+        font-size: 0.85rem;
+    }
+
+    #runContinuousBtn,
+    #stepPrevBtn,
+    #stepNextBtn {
+        min-height: 40px;
+        font-size: 0.85rem;
+        padding: 8px 4px;
+    }
+
+    .btn-action {
+        min-height: 42px;
+        font-size: 0.9rem;
+    }
+
+    /* Full Width Mobile Jog Area */
+    .hardware-jog-column {
+        width: 100%;
+        flex: none;
+        padding: 12px 10px;
+        border-radius: 10px;
+        gap: 12px;
+    }
+
+    #xyContainer {
+        height: auto;
+        min-height: 125px;
+        width: 100%;
+    }
+
+    #xyButtons {
+        position: relative;
+        flex-direction: row;
+        justify-content: space-around;
+        width: 100%;
+        gap: 8px;
+        align-items: flex-start;
+    }
+
+    .jog-group {
+        flex: 1;
+        max-width: 130px;
+        align-items: center;
+    }
+
+    .jog-group.z-jog-group {
+        width: 100%;
+        flex-direction: row;
+        justify-content: center;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .z-jog-group .jog-label {
+        width: 100%;
+        text-align: center;
+        margin-bottom: 2px;
+    }
+
+    .hw-jog-btn {
+        width: 100%;
+        max-width: 115px;
+        height: 44px;
+        font-size: 1.15rem;
+        padding: 0 14px;
+    }
+
+    .z-divider {
+        display: none;
+    }
+
+    .joystick-outer-wrap {
+        position: relative;
+        width: 160px;
+        height: 160px;
+        margin: 0 auto;
+    }
+
+    .joystick-base-ui {
+        width: 100px;
+        height: 100px;
+    }
+
+    .joystick-stick-ui {
+        width: 36px;
+        height: 36px;
+    }
+
+    .step-selector {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        width: 100%;
+    }
+
+    .step-btn {
+        min-height: 42px;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .ui-toggle {
+        min-height: 38px;
+    }
+
+    .ui-toggle label {
+        padding: 8px 6px;
+        font-size: 0.8rem;
+    }
+
+    /* Mobile Console Column */
+    .console-column {
+        width: 100%;
+        border-radius: 12px;
+        max-height: 200px;
+    }
+
+    .console-header {
+        padding: 10px 12px;
+    }
+
+    .console-body {
+        padding: 8px 10px;
+        font-size: 0.75rem;
+    }
+
+    /* Mobile Settings Modal */
+    .settings-modal {
+        width: 95%;
+        max-width: 350px;
+        padding: 16px;
+        border-radius: 12px;
+        max-height: 88vh;
+    }
+
+    .settings-grid {
+        gap: 6px;
+    }
+
+    .settings-grid-item input[type="number"] {
+        padding: 8px;
+    }
+}
