@@ -99,26 +99,45 @@ function setupEventListeners() {
         });
     });
 
-    // Save Point button handler - Matched to id="saveLocationBtn" in index.html
-    const saveButton = document.getElementById("saveLocationBtn");
-    if (saveButton) {
-        saveButton.addEventListener("click", () => {
-            // Matched to id="macroName" and id="locationName" in index.html
-            const macroName = document.getElementById("macroName")?.value || "TOOL_PATH";
-            const locationName = document.getElementById("locationName")?.value || "PT1";
-
-            savePendantPoint(macroName, locationName, currentPosition.x, currentPosition.y, currentPosition.z);
-        });
+    // Save Point Button Listener - Using your EXACT HTML ID
+    const saveBtn = document.getElementById("saveLocationBtn");
+    if (saveBtn) {
+        saveBtn.addEventListener("click", () => triggerSaveFromUI());
     } else {
-        console.warn("Could not find saveLocationBtn element!");
+        console.warn("[TeachPendant] Could not find saveLocationBtn");
+    }
+
+    // Refresh Macros Button
+    const refreshBtn = document.getElementById("refreshMacrosBtn");
+    if (refreshBtn) {
+        refreshBtn.addEventListener("click", () => loadMacrosList());
     }
 }
+
+function triggerSaveFromUI() {
+    // Using your EXACT HTML IDs
+    const macroName = document.getElementById("macroName")?.value || "PICK";
+    const locationName = document.getElementById("locationName")?.value || "PT1";
+    savePendantPoint(macroName, locationName, currentPosition.x, currentPosition.y, currentPosition.z);
+}
+
+// Legacy alias in case anything else tries to call saveLocation directly
+window.saveLocation = function (macroName, locationName, x, y, z) {
+    const mName = macroName || document.getElementById("macroName")?.value || "PICK";
+    const lName = locationName || document.getElementById("locationName")?.value || "PT1";
+    const posX = x !== undefined ? x : currentPosition.x;
+    const posY = y !== undefined ? y : currentPosition.y;
+    const posZ = z !== undefined ? z : currentPosition.z;
+
+    savePendantPoint(mName, lName, posX, posY, posZ);
+};
 
 function updateUICoordinates() {
     const xEl = document.getElementById("pos-x");
     const yEl = document.getElementById("pos-y");
     const zEl = document.getElementById("pos-z");
 
+    // Note: If your HTML uses valX, valY, valZ instead, updating those too
     const vx = document.getElementById("valX");
     const vy = document.getElementById("valY");
     const vz = document.getElementById("valZ");
@@ -137,7 +156,7 @@ function updateUICoordinates() {
 // ==============================================================================
 async function loadMacrosList() {
     const filename = "teach_pendant.cfg";
-    const macroContainer = document.getElementById("macroSelect");
+    const macroContainer = document.getElementById("macroSelect"); // Using your EXACT HTML ID
 
     try {
         const response = await fetch(`${API_BASE}/server/files/config/${filename}?${Date.now()}`);
@@ -164,6 +183,7 @@ async function loadMacrosList() {
                 return;
             }
 
+            // Keep the default "Select Macro" option
             const defaultOpt = document.createElement("option");
             defaultOpt.value = "";
             defaultOpt.textContent = "-- Select Macro --";
@@ -188,7 +208,7 @@ async function savePendantPoint(macroName, locationName, x, y, z) {
     const filename = "teach_pendant.cfg";
 
     try {
-        // Step 1: Read current file content
+        // Step 1: Read existing content
         let currentContent = "";
         try {
             const response = await fetch(`${API_BASE}/server/files/config/${filename}?${Date.now()}`);
@@ -199,10 +219,10 @@ async function savePendantPoint(macroName, locationName, x, y, z) {
             console.log("Creating fresh config file content.");
         }
 
-        // Step 2: Format macro block
-        const cleanMacroName = macroName.replace(/[^a-zA-Z0-9_]/g, "_");
-        const cleanLocationName = locationName.replace(/[^a-zA-Z0-9_]/g, "_");
-        const macroIdentifier = `${cleanMacroName}_${cleanLocationName}`.toUpperCase();
+        // Step 2: Format G-Code Macro
+        const cleanMacro = macroName.replace(/[^a-zA-Z0-9_]/g, "_").toUpperCase();
+        const cleanLocation = locationName.replace(/[^a-zA-Z0-9_]/g, "_").toUpperCase();
+        const macroIdentifier = `${cleanMacro}_${cleanLocation}`;
 
         const newMacro = `\n[gcode_macro ${macroIdentifier}]\n` +
             `gcode:\n` +
@@ -212,12 +232,11 @@ async function savePendantPoint(macroName, locationName, x, y, z) {
 
         const updatedContent = currentContent + newMacro;
 
-        // Step 3: Write to Moonraker config root
+        // Step 3: Upload via Moonraker API
         const formData = new FormData();
         const blob = new Blob([updatedContent], { type: "text/plain" });
         formData.append("file", blob, filename);
         formData.append("root", "config");
-        formData.append("path", filename); // Ensure path is included for Moonraker
 
         const uploadResponse = await fetch(`${API_BASE}/server/files/upload`, {
             method: "POST",
@@ -225,8 +244,13 @@ async function savePendantPoint(macroName, locationName, x, y, z) {
         });
 
         if (uploadResponse.ok) {
-            console.log(`Saved macro [${macroIdentifier}] to ${filename}`);
-            alert(`Saved point: ${macroIdentifier}`);
+            console.log(`[TeachPendant] Successfully saved [${macroIdentifier}] to ${filename}`);
+
+            // Log to the on-screen console if it exists
+            const consoleLine = document.createElement("div");
+            consoleLine.className = "console-line";
+            consoleLine.innerText = `Saved point: ${macroIdentifier}`;
+            document.getElementById("consoleBody")?.appendChild(consoleLine);
 
             // Refresh macro list and reload Klipper config
             await loadMacrosList();
