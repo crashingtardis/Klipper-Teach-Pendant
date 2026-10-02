@@ -83,7 +83,7 @@ async function sendGcode(script) {
 }
 
 // ==============================================================================
-// 3. UI Event Handlers
+// 3. UI Event Handlers (Fixed to match index.html IDs)
 // ==============================================================================
 function setupEventListeners() {
     // Jog button handlers (.jog-btn elements with data-axis and data-dist attributes)
@@ -99,15 +99,18 @@ function setupEventListeners() {
         });
     });
 
-    // Save Point button handler
-    const saveButton = document.getElementById("save-point-btn");
+    // Save Point button handler - Matched to id="saveLocationBtn" in index.html
+    const saveButton = document.getElementById("saveLocationBtn");
     if (saveButton) {
         saveButton.addEventListener("click", () => {
-            const macroName = document.getElementById("macro-name-input")?.value || "TEST_MACRO";
-            const locationName = document.getElementById("location-name-input")?.value || "PT1";
+            // Matched to id="macroName" and id="locationName" in index.html
+            const macroName = document.getElementById("macroName")?.value || "TOOL_PATH";
+            const locationName = document.getElementById("locationName")?.value || "PT1";
 
             savePendantPoint(macroName, locationName, currentPosition.x, currentPosition.y, currentPosition.z);
         });
+    } else {
+        console.warn("Could not find saveLocationBtn element!");
     }
 }
 
@@ -214,6 +217,7 @@ async function savePendantPoint(macroName, locationName, x, y, z) {
         const blob = new Blob([updatedContent], { type: "text/plain" });
         formData.append("file", blob, filename);
         formData.append("root", "config");
+        formData.append("path", filename); // Ensure path is included for Moonraker
 
         const uploadResponse = await fetch(`${API_BASE}/server/files/upload`, {
             method: "POST",
