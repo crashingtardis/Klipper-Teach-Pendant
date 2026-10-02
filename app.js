@@ -199,12 +199,23 @@ function updateMotorState(isEnabled) {
 
     if (isEnabled) {
         if (joystickOuter) joystickOuter.classList.remove("disabled");
-        if (badge) {
-            badge.textContent = "Motors Enabled";
-            badge.classList.add("active");
+
+        const isFullyHomed = homedAxes.includes("x") && homedAxes.includes("y") && homedAxes.includes("z");
+        if (!isFullyHomed) {
+            const unhomedMsg = "Please home the printer.";
+            logToConsole(`⚠️ ${unhomedMsg}`);
+            if (badge) {
+                badge.textContent = unhomedMsg;
+                badge.classList.remove("active");
+            }
+            alert(unhomedMsg);
+        } else {
+            if (badge) {
+                badge.textContent = `Homed: ${homedAxes.toUpperCase()}`;
+                badge.classList.add("active");
+            }
+            logToConsole(`Motors Enabled (Homed: ${homedAxes.toUpperCase()}).`);
         }
-        sendGcode("M17"); // Power motors
-        logToConsole("Motors Enabled (Safety Interlock ON).");
     } else {
         if (joystickOuter) joystickOuter.classList.add("disabled");
         if (badge) {
