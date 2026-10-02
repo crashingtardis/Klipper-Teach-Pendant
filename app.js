@@ -95,23 +95,32 @@ function setupEventListeners() {
         });
     });
 
-    // Save Point Button Listener
-    const saveBtn = document.getElementById("save-point-btn");
+    // Save Point Button Listener - Using your EXACT HTML ID
+    const saveBtn = document.getElementById("saveLocationBtn");
     if (saveBtn) {
         saveBtn.addEventListener("click", () => triggerSaveFromUI());
+    } else {
+        console.warn("[TeachPendant] Could not find saveLocationBtn");
+    }
+
+    // Refresh Macros Button
+    const refreshBtn = document.getElementById("refreshMacrosBtn");
+    if (refreshBtn) {
+        refreshBtn.addEventListener("click", () => loadMacrosList());
     }
 }
 
 function triggerSaveFromUI() {
-    const macroName = document.getElementById("macro-name-input")?.value || "PICK";
-    const locationName = document.getElementById("location-name-input")?.value || "PT1";
+    // Using your EXACT HTML IDs
+    const macroName = document.getElementById("macroName")?.value || "PICK";
+    const locationName = document.getElementById("locationName")?.value || "PT1";
     savePendantPoint(macroName, locationName, currentPosition.x, currentPosition.y, currentPosition.z);
 }
 
-// Legacy alias in case index.html directly calls saveLocation() via inline onclick
+// Legacy alias in case anything else tries to call saveLocation directly
 window.saveLocation = function (macroName, locationName, x, y, z) {
-    const mName = macroName || document.getElementById("macro-name-input")?.value || "PICK";
-    const lName = locationName || document.getElementById("location-name-input")?.value || "PT1";
+    const mName = macroName || document.getElementById("macroName")?.value || "PICK";
+    const lName = locationName || document.getElementById("locationName")?.value || "PT1";
     const posX = x !== undefined ? x : currentPosition.x;
     const posY = y !== undefined ? y : currentPosition.y;
     const posZ = z !== undefined ? z : currentPosition.z;
@@ -124,9 +133,18 @@ function updateUICoordinates() {
     const yEl = document.getElementById("pos-y");
     const zEl = document.getElementById("pos-z");
 
+    // Note: If your HTML uses valX, valY, valZ instead, updating those too
+    const vx = document.getElementById("valX");
+    const vy = document.getElementById("valY");
+    const vz = document.getElementById("valZ");
+
     if (xEl) xEl.innerText = currentPosition.x;
     if (yEl) yEl.innerText = currentPosition.y;
     if (zEl) zEl.innerText = currentPosition.z;
+
+    if (vx) vx.innerText = currentPosition.x;
+    if (vy) vy.innerText = currentPosition.y;
+    if (vz) vz.innerText = currentPosition.z;
 }
 
 // ==============================================================================
@@ -134,7 +152,7 @@ function updateUICoordinates() {
 // ==============================================================================
 async function loadMacrosList() {
     const filename = "teach_pendant.cfg";
-    const macroContainer = document.getElementById("macro-list");
+    const macroContainer = document.getElementById("macroSelect"); // Using your EXACT HTML ID
 
     try {
         const response = await fetch(`${API_BASE}/server/files/config/${filename}?cachebust=${Date.now()}`);
@@ -155,6 +173,12 @@ async function loadMacrosList() {
                 macroContainer.innerHTML = "<option disabled>No macros saved yet</option>";
                 return;
             }
+
+            // Keep the default "Select Macro" option
+            const defaultOpt = document.createElement("option");
+            defaultOpt.value = "";
+            defaultOpt.textContent = "-- Select Macro --";
+            macroContainer.appendChild(defaultOpt);
 
             macros.forEach(macroName => {
                 const opt = document.createElement("option");
@@ -213,7 +237,12 @@ async function savePendantPoint(macroName, locationName, x, y, z) {
 
         if (uploadResponse.ok) {
             console.log(`[TeachPendant] Successfully saved [${macroIdentifier}] to ${filename}`);
-            alert(`Saved point: ${macroIdentifier}`);
+
+            // Log to the on-screen console if it exists
+            const consoleLine = document.createElement("div");
+            consoleLine.className = "console-line";
+            consoleLine.innerText = `Saved point: ${macroIdentifier}`;
+            document.getElementById("consoleBody")?.appendChild(consoleLine);
 
             await loadMacrosList();
             await fetch(`${API_BASE}/printer/gcode/script?script=RESTART`, { method: "POST" });
