@@ -1,6 +1,6 @@
 ﻿# 🎛️ Klipper Teach Pendant
 
-A physical-style virtual teach pendant web interface designed for Klipper/Moonraker 3D printers and CNC machines. It provides intuitive manual jogging (via individual buttons or a constrained analog-style virtual joystick), real-time coordinate readouts, emergency stop controls, step-through macro playback, and direct point touch-up capabilities.
+A physical-style virtual teach pendant web interface designed for Klipper/Moonraker 3D printers. It provides intuitive manual jogging (via individual buttons or a constrained analog-style virtual joystick), real-time coordinate readouts, emergency stop controls, step-through macro playback, and direct point touch-up capabilities.
 
 ---
 
