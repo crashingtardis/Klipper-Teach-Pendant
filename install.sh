@@ -93,12 +93,10 @@ cat << 'EOF' > "${THEME_DIR}/navi.json"
 [
   {
     "title": "Teach Pendant",
-    "route": "iframe",
-    "params": {
-      "url": "/klipper-teach-pendant/index.html"
-    },
+    "href": "/klipper-teach-pendant/index.html",
+    "target": "_blank",
     "position": 35,
-    "icon": "M18.41,4L16,6.41V6.59L18.41,9H22V11H17.59L16,9.41V12H15A2,2 0 0,1 13,10V7.5H9.86C9.77,7.87 9.62,8.22 9.42,8.55L15.18,19H20A2,2 0 0,1 22,21V22H2V21A2,2 0 0,1 4,19H10.61L5.92,10.5C4.12,10.47 2.56,9.24 2.11,7.5C1.56,5.36 2.87,3.05 5,2.5C7.14,1.96 9.45,3.27 10,5.41C10.27,6.5 10.07,7.58 9.54,8.45H13V5A2,2 0 0,1 15,3H16V4L18.41,4Z"
+    "icon": "M13,6V11H18V8L22,12L18,16V13H13V18H16L12,22L8,18H11V13H6V16L2,12L6,8V11H11V6H8L12,2L16,6H13Z"
   }
 ]
 EOF
