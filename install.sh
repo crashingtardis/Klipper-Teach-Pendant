@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 set -e
 
 # ==============================================================================
@@ -130,7 +130,7 @@ try:
 
     if "klipper-teach-pendant" in content:
         updated = re.sub(
-            r'(location /klipper-teach-pendant/\s*\{[^}]*?alias\s+)[^\n;]+',
+            r'(location /klipper-teach-pendant/\s*\{[^}]*?alias\s+)[^\n;]+;',
             r'\g<1>' + repo_dir + '/;',
             content,
             flags=re.DOTALL
@@ -157,8 +157,12 @@ except Exception as e:
 PYEOF
 
 if sudo -n true 2>/dev/null; then
-    sudo nginx -t && sudo systemctl reload nginx
-    report_ok "Nginx reloaded successfully."
+    if sudo nginx -t 2>&1; then
+        sudo systemctl reload nginx
+        report_ok "Nginx reloaded successfully."
+    else
+        echo -e "${SR_YELLOW}[WARN] Nginx config test failed. Check /etc/nginx/sites-available/mainsail manually.${SR_RESET}"
+    fi
 else
     echo -e "${SR_YELLOW}Run: sudo nginx -t && sudo systemctl reload nginx${SR_RESET}"
 fi
