@@ -48,6 +48,15 @@ function initUI() {
     updateMotorState(false);
     updateResponsiveLayoutState();
     window.addEventListener("resize", updateResponsiveLayoutState);
+
+    // Detect if running inside Mainsail's iframe panel
+    try {
+        if (window !== window.top) {
+            document.body.classList.add("in-iframe");
+        }
+    } catch (e) {
+        document.body.classList.add("in-iframe");
+    }
 }
 
 // ==============================================================================
@@ -1024,6 +1033,29 @@ function setupEventListeners() {
     const consoleToggleBtn = document.getElementById("consoleToggleBtn");
     if (consoleToggleBtn) {
         consoleToggleBtn.addEventListener("click", toggleConsoleSide);
+    }
+
+    // Mainsail Home Button
+    const mainsailHomeBtn = document.getElementById("mainsailHomeBtn");
+    if (mainsailHomeBtn) {
+        mainsailHomeBtn.addEventListener("click", () => {
+            try {
+                if (window !== window.top) {
+                    // We're inside Mainsail's iframe panel — navigate parent to dashboard
+                    window.top.location.href = "/";
+                } else {
+                    // Standalone mode — go back in history
+                    if (window.history.length > 1) {
+                        window.history.back();
+                    } else {
+                        window.location.href = "/";
+                    }
+                }
+            } catch (e) {
+                // Cross-origin fallback
+                window.location.href = "/";
+            }
+        });
     }
 
     // Motors Key Switch
